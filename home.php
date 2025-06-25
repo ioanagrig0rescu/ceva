@@ -10,17 +10,23 @@ include 'plugins/bootstrap.html';
 
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
     <meta charset="utf-8">
     <title>Home - Budget Master</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css" integrity="sha256-3sPp8BkKUE7QyPSl6VfBByBroQbKxKG7tsusY2mhbVY=" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet">
     <style>
-        body{
-        background:#f3f3f3;
-        margin-top:20px;
-        color: #616f80;
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f3f3f3;
+            color: #616f80;
+            padding-top: 60px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .card {
@@ -34,439 +40,163 @@ include 'plugins/bootstrap.html';
             height: 2.3rem;
             width: 2.3rem;
         }
+
+        /* Navbar Styles */
+        .navbar {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(
+                to right,
+                rgba(33, 37, 41, 0.97),
+                rgba(33, 37, 41, 0.97)
+            );
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.5rem;
+            color: white !important;
+        }
+
+        .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: rgba(255, 255, 255, 1) !important;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .navbar-toggler {
+            border: none;
+            padding: 0.5rem;
+        }
+
+        .navbar-toggler:focus {
+            box-shadow: none;
+            outline: none;
+        }
+
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                background: rgba(33, 37, 41, 0.97);
+                border-radius: 10px;
+                padding: 1rem;
+                margin-top: 1rem;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .navbar-nav .nav-link {
+                padding: 0.7rem 1rem;
+                border-radius: 5px;
+            }
+
+            .navbar-nav .nav-link:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        /* Footer Styles */
+        footer {
+            background: #212529;
+            color: white;
+            padding: 2rem 0;
+            margin-top: auto;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            padding: 20px 0;
+        }
     </style>
 </head>
 <body>
-<?php
-include 'navbar/sidebar_old.php';
-?>
-<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet">
-<div class="container">
-    <div class="row">
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-pattern">
-                <div class="card-body shadow-lg">
-                    <div class="float-right">
-                        <i class="fa fa-archive text-primary h4 ml-3"></i>
-                    </div>
-                    <h5 class="font-size-20 mt-0 pt-1">24</h5>
-                    <p class="text-muted mb-0">Total economisit</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-pattern">
-                <div class="card-body shadow-lg">
-                    <div class="float-right">
-                        <i class="fa fa-th text-primary h4 ml-3"></i>
-                    </div>
-                    <h5 class="font-size-20 mt-0 pt-1">18</h5>
-                    <p class="text-muted mb-0">Luni reusite</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-pattern">
-                <div class="card-body shadow-lg">
-                    <div class="float-right">
-                        <i class="fa fa-file text-primary h4 ml-3"></i>
-                    </div>
-                    <h5 class="font-size-20 mt-0 pt-1">06</h5>
-                    <p class="text-muted mb-0">Luni cu loc de inbunatatire</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card shadow-lg">
-                <div class="card-body shadow-lg">
-                    <form>
-                        <div class="form-group mb-0">
-                            <label>Cauta</label>
-                            <div class="input-group mb-0">
-                                <input type="text" class="form-control" placeholder="Cauta o luna anume..." aria-describedby="project-search-addon" />
-                                <div class="input-group-append">
-                                    <button class="btn btn-danger" type="button" id="project-search-addon"><i class="fa fa-search search-icon font-12"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+
+<!-- Navbar Start -->
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <div class="container">
+        <!-- Logo/Brand -->
+        <a class="navbar-brand" href="/home.php">
+            Budget Master
+        </a>
+
+        <!-- Buton Hamburger -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Meniu Links -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/venituri.php">Venituri</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/calendar.php">Calendar</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/goals.php">Obiective</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/progres.php">Progres</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/account/profile.php">Profil</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/logout.php">Deconectare</a>
+                </li>
+            </ul>
         </div>
     </div>
+</nav>
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-body shadow-lg">
-                    <div class="table-responsive project-list">
-                        <table class="table project-table table-centered table-nowrap">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Nr. crt</th>
-                                    <th scope="col">Luna</th>
-                                    <th scope="col">Data start</th>
-                                    <th scope="col">Status</th>
-                                    <th scope="col">Creat</th>
-                                    <th scope="col">Progres</th>
-                                    <th scope="col">Actiuni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <th scope="row">1</th>
-                                    <td>New admin Design</td>
-                                    <td>02/5/2019</td>
-                                    <td>
-                                        <span class="text-success font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Completed</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Roger Drake">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar6.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Reggie James">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar7.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Gerald Mayberry">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar8.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">100%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <th scope="row">2</th>
-                                    <td>Landing page Design</td>
-                                    <td>04/6/2019</td>
-                                    <td>
-                                        <span class="text-primary font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Pending</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Deborah Mixon">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar2.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Scott Jessie">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar1.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">78%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-primary" role="progressbar" style="width: 78%;" aria-valuenow="78" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <th scope="row">3</th>
-                                    <td>Multipurpose Landing Template</td>
-                                    <td>06/6/2019</td>
-                                    <td>
-                                        <span class="text-success font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Completed</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Neil Wing">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar3.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Stanley Barber">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar4.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Roger Drake">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar5.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Jack Krier">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar6.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">100%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th scope="row">4</th>
-                                    <td>Blog Template Design</td>
-                                    <td>07/5/2019</td>
-                                    <td>
-                                        <span class="text-success font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Completed</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Roger Drake">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar7.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Reggie James">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar8.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Gerald Mayberry">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar1.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">100%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <th scope="row">5</th>
-                                    <td>Brand logo design</td>
-                                    <td>08/6/2019</td>
-                                    <td>
-                                        <span class="text-primary font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Pending</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Deborah Mixon">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar1.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Scott Jessie">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar2.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">54%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-primary" role="progressbar" style="width: 54%;" aria-valuenow="54" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <th scope="row">6</th>
-                                    <td>Redesign - Landing page</td>
-                                    <td>10/6/2019</td>
-                                    <td>
-                                        <span class="text-primary font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Pending</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Neil Wing">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar6.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Stanley Barber">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar5.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Roger Drake">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar4.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Jack Krier">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar3.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">41%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-primary" role="progressbar" style="width: 41%;" aria-valuenow="41" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th scope="row">7</th>
-                                    <td>Redesign - Dashboard</td>
-                                    <td>12/5/2019</td>
-                                    <td>
-                                        <span class="text-success font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Completed</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Roger Drake">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar6.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Reggie James">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar7.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">100%</span></p>
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <th scope="row">8</th>
-                                    <td>Landing page Design</td>
-                                    <td>13/6/2019</td>
-                                    <td>
-                                        <span class="text-primary font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Pending</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Deborah Mixon">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar2.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Scott Jessie">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar1.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">84%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-primary" role="progressbar" style="width: 84%;" aria-valuenow="84" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <th scope="row">9</th>
-                                    <td>Multipurpose Landing Template</td>
-                                    <td>15/6/2019</td>
-                                    <td>
-                                        <span class="text-success font-12"><i class="mdi mdi-checkbox-blank-circle mr-1"></i> Completed</span>
-                                    </td>
-                                    <td>
-                                        <div class="team">
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Neil Wing">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar4.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Stanley Barber">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar3.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                            <a href="javascript: void(0);" class="team-member" data-toggle="tooltip" data-placement="top" title="" data-original-title="Roger Drake">
-                                                <img src="https://bootdey.com/img/Content/avatar/avatar5.png" class="rounded-circle avatar-xs" alt="" />
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-0">Progress<span class="float-right">100%</span></p>
-
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <div class="action">
-                                            <a href="#" class="text-success mr-4" data-toggle="tooltip" data-placement="top" title="" data-original-title="Edit"> <i class="fa fa-pencil h5 m-0"></i></a>
-                                            <a href="#" class="text-danger" data-toggle="tooltip" data-placement="top" title="" data-original-title="Close"> <i class="fa fa fa-remove h5 m-0"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- end project-list -->
-
-                    <div class="pt-3">
-                        <ul class="pagination justify-content-end mb-0">
-                            <li class="page-item disabled">
-                                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
-                            </li>
-                            <li class="page-item"><a class="page-link" href="#">1</a></li>
-                            <li class="page-item active"><a class="page-link" href="#">2</a></li>
-                            <li class="page-item"><a class="page-link" href="#">3</a></li>
-                            <li class="page-item">
-                                <a class="page-link" href="#">Next</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- Main Content Area -->
+<div class="content-wrapper">
+    <div class="container">
+        <!-- Aici va fi adăugat conținutul principal -->
     </div>
-    <!-- end row -->
 </div>
 
+<!-- Footer -->
+<?php include 'footer/footer.html'; ?>
 
+<!-- Script pentru navbar -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Închide meniul hamburger când se face click pe un link
+    const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+    const menuToggle = document.querySelector('.navbar-toggler');
+    const navbarCollapse = document.querySelector('.navbar-collapse');
+
+    navLinks.forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (navbarCollapse.classList.contains('show')) {
+                menuToggle.click();
+            }
+        });
+    });
+});
+</script>
 
 </body>
-<?php include 'footer/footer.html';?>
 </html>

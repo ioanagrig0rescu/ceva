@@ -1,19 +1,35 @@
 <?php
 ob_start();
 session_start();
+
+// Configurare raportare erori
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Headers pentru securitate și cache
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 include '../plugins/bootstrap.html';
 include '../database/db.php';
-include 'UserInfo.php';
 
+// Inițializare variabile
+$error_message = '';
+$email_value = '';
+
+// Procesare formular login
 if (isset($_POST['submit'])) {
-    $email = trim($_POST['email']);
+    // Filtrare și validare input
+    $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'];
-
-    $sql = "SELECT * FROM users WHERE email=?";
+    
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error_message = "Adresa de email nu este validă!";
+    } else {
+        // Pregătire și executare query securizat
+        $sql = "SELECT * FROM users WHERE email = ?";
     $stmt = mysqli_prepare($conn, $sql); 
     mysqli_stmt_bind_param($stmt, 's', $email);
     mysqli_stmt_execute($stmt);
@@ -22,11 +38,13 @@ if (isset($_POST['submit'])) {
     if ($result && mysqli_num_rows($result) > 0) {
         $user = mysqli_fetch_assoc($result);
 
-        // Verifică parola criptată
+            // Verificare parolă
         if (password_verify($password, $user['password'])) {
             if ((int)$user['retire'] === 1) {
-                echo "<script>alert('Contul este dezactivat. Va rugam contactati departamentul IT.');</script>";
+                    $error_message = "Contul este dezactivat. Vă rugăm contactați departamentul IT.";
+                    $email_value = htmlspecialchars($email);
             } else {
+                    // Setare sesiune și cookie-uri
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['email'] = $user['email'];
                 $_SESSION['role'] = $user['role'];
@@ -34,114 +52,170 @@ if (isset($_POST['submit'])) {
                 $_SESSION['loggedin'] = true;
                 $_SESSION['id'] = $user['id'];
 
-                // Cookie-uri
+                    // Cookie-uri cu setări de securitate
                 $cookie_options = [
-                    'expires' => time() + 86400, // 1 zi
+                        'expires' => time() + 86400,
                     'path' => '/',
-                    'secure' => isset($_SERVER['HTTPS']),
+                        'secure' => true,
                     'httponly' => true,
-                    'samesite' => 'Lax'
+                        'samesite' => 'Strict'
                 ];
+                    
                 setcookie('username', $user['username'], $cookie_options);
                 setcookie('email', $user['email'], $cookie_options);
                 setcookie('role', $user['role'], $cookie_options);
-                setcookie('register_date', $user['register_date'], $cookie_options);
                 setcookie('loggedin', 'true', $cookie_options);
 
-                // Logare acces
-                $userInfo = new UserInfo();
-                $ip = $userInfo->get_ip();
-                $os = $userInfo->get_os();
-                $browser = $userInfo->get_browser();
-                $device = $userInfo->get_device();
-                $currentDate = date('Y-m-d H:i:s');
-
-                $stmt = $conn->prepare("INSERT INTO login_logs (username, ip, os, browser, device, login_date) VALUES (?, ?, ?, ?, ?, ?)");
-                if ($stmt) {
-                    $stmt->bind_param("ssssss", $user['username'], $ip, $os, $browser, $device, $currentDate);
-                    $stmt->execute();
-
-                    $oneYearAgo = date('Y-m-d H:i:s', strtotime('-1 year'));
-                    $deleteStmt = $conn->prepare("DELETE FROM login_logs WHERE login_date < ?");
-                    $deleteStmt->bind_param("s", $oneYearAgo);
-                    $deleteStmt->execute();
-
-                    $stmt->close();
-                    $deleteStmt->close();
+                    // Redirect bazat pe rol
+                    header("Location: " . ($user['role'] === 'admin' ? '../admin/admin.php' : '../home.php'));
+                    exit();
                 }
-
-                // Redirect
-                if ($user['role'] === 'admin') {
-                    header("Location: ../admin/admin.php");
-                } else {
-                    header("Location: ../home.php");
-                }
-                exit();
+            } else {
+                $error_message = "Parola introdusă nu este validă!";
+                $email_value = htmlspecialchars($email);
             }
         } else {
-            echo "<script>alert('Email sau Parola incorecta!');</script>";
+            $error_message = "Adresa de email nu există în baza de date!";
         }
-    } else {
-        echo "<script>alert('Email sau Parola incorecta!');</script>";
+        mysqli_stmt_close($stmt);
     }
-
-    if ($stmt) mysqli_stmt_close($stmt);
-    mysqli_close($conn);
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
     <meta charset="utf-8">
-    <title>Auth - Budget Master</title>
-    <script type="text/javascript">
-        function preventBack(){window.history.forward()};
-        setTimeout("preventBack()",0);
-            window.onunload=function(){null;}
-    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css" integrity="sha256-3sPp8BkKUE7QyPSl6VfBByBroQbKxKG7tsusY2mhbVY=" crossorigin="anonymous" />
-    <style type="text/css">
-        <?php include 'style.css'; ?>
+    <title>Autentificare - Budget Master</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css">
+    <style>
+        html {
+            height: 100%;
+        }
+
+        body {
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background: #6a11cb;
+            background: -webkit-linear-gradient(to right, rgba(106, 17, 203, 1), rgba(37, 117, 252, 1));
+            background: linear-gradient(to right, rgba(106, 17, 203, 1), rgba(37, 117, 252, 1));
+        }
+
+        .gradient-custom {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
+            text-align: center;
+        }
+
+        .card {
+            background-color: rgba(33, 37, 41, 0.9) !important;
+            border: none !important;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-control-lg {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+        }
+
+        .form-control-lg:focus {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .form-control-lg::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        .btn-outline-light:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
     </style>
 </head>
 <body>
-<section class="vh-100 gradient-custom">
+<section class="gradient-custom">
   <div class="container py-5 h-100">
     <div class="row d-flex justify-content-center align-items-center h-100">
       <div class="col-12 col-md-8 col-lg-6 col-xl-5">
         <div class="card bg-dark text-white" style="border-radius: 1rem;">
           <div class="card-body p-5 text-center">
-
             <div class="mb-md-5 mt-md-4 pb-5">
-
               <h2 class="fw-bold mb-2 text-uppercase">Budget Master</h2>
-              <h2 class="fw-bold mb-2 text-uppercase">Login</h2>
-              <p class="text-white-50 mb-5">Introdu mai jos datele tale de conectare!</p>
+                            <h3 class="fw-bold mb-4">Autentificare</h3>
 
-              <form method="POST" action="">
+                            <?php if ($error_message): ?>
+                                <div class="error-message">
+                                    <?php echo htmlspecialchars($error_message); ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <form method="POST" action="" novalidate>
                 <div class="form-outline form-white mb-4">
-                    <input type="email" name="email" class="form-control form-control-lg" placeholder="Introdu aici adresa de email..." required />
+                                    <input type="email" 
+                                           name="email" 
+                                           class="form-control form-control-lg" 
+                                           value="<?php echo $email_value; ?>"
+                                           placeholder="Introdu adresa ta de email"
+                                           required
+                                           pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
                     <label class="form-label">Email</label>
                 </div>
+
                 <div class="form-outline form-white mb-4">
-                    <input type="password" name="password" class="form-control form-control-lg" placeholder="Introdu parola..." required />
+                                    <input type="password" 
+                                           name="password" 
+                                           class="form-control form-control-lg"
+                                           placeholder="Introdu parola ta"
+                                           required
+                                           autocomplete="current-password"
+                                           minlength="6">
                     <label class="form-label">Parola</label>
                 </div>
-                <button class="btn btn-outline-light btn-lg px-5" type="submit" name="submit">Login</button>
+
+                                <button class="btn btn-outline-light btn-lg px-5" 
+                                        type="submit" 
+                                        name="submit">
+                                    Autentificare
+                                </button>
             </form>
-            <br><hr>
-              <p class="small mb-5 pb-lg-2"><a class="text-white-50" href="#!">Ti-ai uitat parola?</a></p>
-              <div class="d-flex justify-content-center text-center mt-4 pt-1">
-                <a href="#!" class="text-white"><i class="fab fa-facebook-f fa-lg"></i></a>
-                <a href="#!" class="text-white"><i class="fab fa-twitter fa-lg mx-4 px-2"></i></a>
-                <a href="#!" class="text-white"><i class="fab fa-google fa-lg"></i></a>
+
+                            <div class="mt-4">
+                                <p class="small mb-5 pb-lg-2">
+                                    <a class="text-white-50" href="reset-password.php">Ai uitat parola?</a>
+                                </p>
               </div>
-            </div>
+
             <div>
-              <p class="mb-0">Nu ai cont? <a href="register.php" class="text-white-50 fw-bold">Inregistreaza-te!</a>
+                                <p class="mb-0">
+                                    Nu ai cont? 
+                                    <a href="register.php" class="text-white-50 fw-bold">Înregistrează-te!</a>
               </p>
+                            </div>
             </div>
           </div>
         </div>

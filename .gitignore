@@ -1,0 +1,54 @@
+# Environment files
+.env
+.env.*
+
+# Configuration files that might contain sensitive data
+database/config.php
+config.php
+
+# Composer dependencies
+/vendor/
+
+# Node modules if any
+/node_modules/
+
+# Cache and temporary files
+*.cache
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Upload directories that should be created locally
+/uploads/
+/profile-photos/*
+!/profile-photos/.gitkeep
+
+# Build artifacts
+/dist/
+/build/
+
+# Local development files
+*.local
+*.dev
+*.development
+
+# Database files
+*.sql
+*.sqlite
+*.db
+
+# Debug files
+debug.log
+error_log
+php_errors.log 

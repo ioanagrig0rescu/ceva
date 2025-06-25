@@ -1,95 +1,230 @@
 <?php
-ob_start();
 session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+require_once '../database/db.php';
+require_once '../plugins/bootstrap.html';
 
-include '../plugins/bootstrap.html';
-include '../database/db.php';
+$error = '';
+$username = $email = '';
 
-if (isset($_POST['submit'])) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Curățare și validare date
+    $username = strtolower(trim($_POST['username']));
     $email = trim($_POST['email']);
     $password = $_POST['password'];
-    $username = strstr($email, '@', true);
-    $register_date = date('Y-m-d H:i:s');
-    $retire = 0; // cont activ
-    $role = 'user';
+    $confirm_password = $_POST['confirm_password'];
 
-    // verifică dacă emailul există deja
-    $checkSql = "SELECT id FROM users WHERE email = ?";
-    $stmt = $conn->prepare($checkSql);
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $stmt->store_result();
-
-    if ($stmt->num_rows > 0) {
-        echo "<script>alert('Adresa de email este deja folosită!');</script>";
-    } else {
-        // inserează contul nou
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $insertSql = "INSERT INTO users (username, email, password, register_date, retire, role) VALUES (?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($insertSql);
-        $stmt->bind_param("ssssss", $username, $email, $hashedPassword, $register_date, $retire, $role);
-
-        if ($stmt->execute()) {
-            echo "<script>alert('Contul a fost creat cu succes!'); window.location.href='login.php';</script>";
-        } else {
-            echo "<script>alert('A apărut o eroare la crearea contului.');</script>";
-        }
+    // Validare username
+    if (empty($username)) {
+        $error = "Username-ul este obligatoriu!";
+    } elseif (!preg_match('/^[a-z0-9]{3,20}$/', $username)) {
+        $error = "Username-ul trebuie să conțină doar litere mici și cifre, între 3-20 caractere!";
     }
-    $stmt->close();
-    $conn->close();
+    // Validare email
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Email invalid!";
+    }
+    // Validare parolă
+    elseif (strlen($password) < 6) {
+        $error = "Parola trebuie să aibă minim 6 caractere!";
+    }
+    elseif (!preg_match("/[A-Z]/", $password)) {
+        $error = "Parola trebuie să conțină cel puțin o literă mare!";
+    }
+    elseif (!preg_match("/[0-9]/", $password)) {
+        $error = "Parola trebuie să conțină cel puțin o cifră!";
+    }
+    elseif ($password !== $confirm_password) {
+        $error = "Parolele nu coincid!";
+    }
+    else {
+        // Verificare username și email existente
+        $stmt = $conn->prepare("SELECT username, email FROM users WHERE username = ? OR email = ?");
+        $stmt->bind_param("ss", $username, $email);
+    $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            if ($row['username'] === $username) {
+                $error = "Username-ul este deja folosit!";
+    } else {
+                $error = "Email-ul este deja folosit!";
+            }
+        } else {
+            // Inserare utilizator nou
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $register_date = date('Y-m-d H:i:s');
+            
+            $stmt = $conn->prepare("INSERT INTO users (username, email, password, register_date, retire, role) VALUES (?, ?, ?, ?, 0, 'user')");
+            $stmt->bind_param("ssss", $username, $email, $hashed_password, $register_date);
+
+            if ($stmt->execute()) {
+                header("Location: login.php?registered=1");
+                exit();
+            } else {
+                $error = "Eroare la crearea contului. Încearcă din nou!";
+            }
+        }
+        $stmt->close();
+    }
 }
 ?>
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
-    <meta charset="utf-8">
-    <title>Register - Budget Master</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css" integrity="sha256-3sPp8BkKUE7QyPSl6VfBByBroQbKxKG7tsusY2mhbVY=" crossorigin="anonymous" />
-    <style type="text/css">
-        <?php include 'style.css'; ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Înregistrare - Budget Master</title>
+    <style>
+        html {
+            height: 100%;
+        }
+
+        body {
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background: #6a11cb;
+            background: -webkit-linear-gradient(to right, rgba(106, 17, 203, 1), rgba(37, 117, 252, 1));
+            background: linear-gradient(to right, rgba(106, 17, 203, 1), rgba(37, 117, 252, 1));
+        }
+
+        .gradient-custom {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .error { 
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .requirements {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .card {
+            background-color: rgba(33, 37, 41, 0.9) !important;
+            border: none !important;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-control-lg {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+        }
+
+        .form-control-lg:focus {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .form-control-lg::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        .btn-outline-light:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
     </style>
 </head>
 <body>
-<section class="vh-100 gradient-custom">
+<section class="gradient-custom">
   <div class="container py-5 h-100">
     <div class="row d-flex justify-content-center align-items-center h-100">
       <div class="col-12 col-md-8 col-lg-6 col-xl-5">
         <div class="card bg-dark text-white" style="border-radius: 1rem;">
           <div class="card-body p-5 text-center">
+                        <h2 class="fw-bold mb-4">Creare cont nou</h2>
 
-            <div class="mb-md-5 mt-md-4 pb-5">
+                        <?php if ($error): ?>
+                            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+                        <?php endif; ?>
 
-              <h2 class="fw-bold mb-2 text-uppercase">Budget Master</h2>
-              <h2 class="fw-bold mb-2">Creaza un cont gratuit!</h2>
-              <p class="text-white-50 mb-5">Introdu mai jos datele tale tale pentru a te intregistra!</p>
+                        <form method="POST" novalidate>
+                            <!-- Username -->
+                            <div class="form-outline form-white mb-4">
+                                <input type="text" 
+                                       name="username" 
+                                       class="form-control form-control-lg"
+                                       value="<?php echo htmlspecialchars($username); ?>"
+                                       placeholder="Alege un username"
+                                       required>
+                                <div class="requirements">
+                                    Username: doar litere mici și cifre (3-20 caractere)
+                                </div>
+                            </div>
 
-              <form method="POST" action="">
+                            <!-- Email -->
                 <div class="form-outline form-white mb-4">
-                    <input type="email" name="email" class="form-control form-control-lg" placeholder="Introdu aici adresa de email..." required />
-                    <label class="form-label">Email</label>
+                                <input type="email" 
+                                       name="email" 
+                                       class="form-control form-control-lg"
+                                       value="<?php echo htmlspecialchars($email); ?>"
+                                       placeholder="Adresa ta de email"
+                                       required>
                 </div>
+
+                            <!-- Parola -->
                 <div class="form-outline form-white mb-4">
-                    <input type="password" name="password" class="form-control form-control-lg" placeholder="Introdu parola..." required />
-                    <label class="form-label">Parola</label>
+                                <input type="password" 
+                                       name="password" 
+                                       class="form-control form-control-lg"
+                                       placeholder="Alege o parolă"
+                                       required 
+                                       autocomplete="new-password">
+                                <div class="requirements">
+                                    Parola: minim 6 caractere, o literă mare și o cifră
+                                </div>
                 </div>
-                <button class="btn btn-outline-light btn-lg px-5" type="submit" name="submit">Creaza contul!</button>
-            </form>
-            <br><hr>
+
+                            <!-- Confirmare Parola -->
+                            <div class="form-outline form-white mb-4">
+                                <input type="password" 
+                                       name="confirm_password" 
+                                       class="form-control form-control-lg"
+                                       placeholder="Confirmă parola"
+                                       required 
+                                       autocomplete="new-password">
             </div>
-            <div>
-              <p class="mb-0">Ai un cont? <a href="login.php" class="text-white-50 fw-bold">Conecteaza-te!</a>
+
+                            <button class="btn btn-outline-light btn-lg px-5" type="submit">
+                                Creează cont
+                            </button>
+
+                            <div class="mt-4">
+                                <p class="mb-0">
+                                    Ai deja cont? 
+                                    <a href="login.php" class="text-white-50 fw-bold">Conectează-te</a>
               </p>
             </div>
+                        </form>
           </div>
         </div>
       </div>
     </div>
   </div>
 </section>
-</body>
 </body>
 </html>
