@@ -1,169 +1,286 @@
-<?php
-// Verifică dacă utilizatorul este autentificat
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    header('Location: /account/login.php');
-    exit;
-}
-?>
-
-<!-- Navbar Start -->
-<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
-    <div class="container">
-        <!-- Logo/Brand -->
-        <a class="navbar-brand" href="/home.php">
-            Budget Master
-        </a>
-
-        <!-- Buton Hamburger -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <!-- Meniu Links -->
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="/venituri.php">Venituri</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/calendar.php">Calendar</a>
-                </li>
-                <li class="nav-item position-relative">
-                    <a class="nav-link" href="/goals.php">
-                        Goals
-                        <span id="warnings-badge" class="position-absolute badge rounded-pill bg-danger">
-                            0
-                        </span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/progres.php">Progres</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/account/profile.php">Account</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
-
+<!DOCTYPE html>
 <style>
 /* Navbar Styles */
 .navbar {
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(
-        to right,
-        rgba(106, 17, 203, 0.05),
-        rgba(37, 117, 252, 0.05)
-    );
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 1rem 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     transition: all 0.3s ease;
 }
 
-/* Navbar când se face scroll */
-.navbar.scrolled {
-    background: linear-gradient(
-        to right,
-        rgba(106, 17, 203, 0.95),
-        rgba(37, 117, 252, 0.95)
-    );
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+.navbar-container {
+    max-width: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 2rem;
+    width: 100%;
 }
 
-/* Brand/Logo */
 .navbar-brand {
-    font-weight: 600;
-    font-size: 1.5rem;
-    color: #6a11cb;
-}
-
-.scrolled .navbar-brand {
+    font-size: 1.8rem;
+    font-weight: 700;
     color: white;
+    text-decoration: none;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    margin-right: 2rem;
 }
 
-/* Link-uri navbar */
-.navbar-nav .nav-link {
-    color: #6a11cb;
+.navbar-brand:hover {
+    color: #f8f9fa;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.navbar-nav {
+    display: flex;
+    flex-direction: row;
+    list-style: none;
+    margin: 0;
+    margin-left: auto;
+    padding: 0;
+    gap: 1.5rem;
+}
+
+.nav-item {
+    position: relative;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
     font-weight: 500;
+    font-size: 1rem;
     padding: 0.5rem 1rem;
-    transition: color 0.3s ease;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
-.scrolled .nav-link {
-    color: white;
-}
-
-.navbar-nav .nav-link:hover {
-    color: #2575fc;
-}
-
-.scrolled .nav-link:hover {
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* Badge Styles */
-#warnings-badge {
+.nav-link::before {
+    content: '';
+    position: absolute;
     top: 0;
-    right: -5px;
-    font-size: 0.7rem;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: all 0.6s ease;
+}
+
+.nav-link:hover::before {
+    left: 100%;
+}
+
+.nav-link:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-toggle {
     display: none;
-}
-
-/* Buton hamburger */
-.navbar-toggler {
+    background: none;
     border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
     padding: 0.5rem;
+    border-radius: 5px;
+    transition: all 0.3s ease;
 }
 
-.navbar-toggler:focus {
-    box-shadow: none;
-    outline: none;
+.navbar-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
-.navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(106, 17, 203, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+.hamburger {
+    display: flex;
+    flex-direction: column;
+    width: 25px;
+    height: 20px;
+    justify-content: space-between;
 }
 
-.scrolled .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+.hamburger span {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background-color: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
 }
 
-/* Media Queries pentru Responsive */
-@media (max-width: 991.98px) {
-    .navbar-collapse {
-        background: white;
-        border-radius: 10px;
+.navbar-toggle.active .hamburger span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.navbar-toggle.active .hamburger span:nth-child(2) {
+    opacity: 0;
+}
+
+.navbar-toggle.active .hamburger span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .navbar-container {
+        padding: 0 1rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1.5rem;
+    }
+    
+    .navbar-toggle {
+        display: block;
+    }
+    
+    .navbar-nav {
+        position: fixed;
+        top: 70px;
+        left: 0;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
         padding: 1rem;
-        margin-top: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        gap: 0.5rem;
+        transform: translateY(-100vh);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.4s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+        white-space: nowrap;
+        justify-content: space-evenly;
+        align-items: center;
     }
+    
+    .navbar-nav.active {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .nav-item {
+        flex-shrink: 0;
+        text-align: center;
+        display: inline-block !important;
+    }
+    
+    .nav-link {
+        display: block;
+        padding: 0.75rem 1rem;
+        border-radius: 25px;
+        border: none;
+        margin: 0;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    
+    .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+}
 
-    .scrolled .navbar-collapse {
-        background: rgba(106, 17, 203, 0.95);
-    }
-
-    .navbar-nav .nav-link {
-        color: #6a11cb;
-        padding: 0.7rem 1rem;
-        border-radius: 5px;
-    }
-
-    .scrolled .navbar-nav .nav-link {
-        color: white;
-    }
-
-    .navbar-nav .nav-link:hover {
-        background-color: rgba(106, 17, 203, 0.1);
-    }
-
-    .scrolled .navbar-nav .nav-link:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
+/* Body padding pentru navbar fixed */
+body {
+    margin: 0;
+    padding: 0;
+    padding-top: 80px !important;
+    background: #f3f3f3;
+    color: #616f80;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Poppins', sans-serif;
 }
 </style>
 
-<!-- Include navbar.js și goal-warnings.js -->
-<script src="/navbar/navbar.js"></script>
-<script src="/js/goal-warnings.js"></script> 
+<nav class="navbar">
+    <div class="navbar-container">
+        <!-- Brand/Logo -->
+        <a href="home.php" class="navbar-brand">BUDGETMASTER</a>
+        
+        <!-- Navigation Links -->
+        <ul class="navbar-nav" id="navbarNav">
+            <li class="nav-item">
+                <a href="calendar.php" class="nav-link">CALENDAR</a>
+            </li>
+            <li class="nav-item">
+                <a href="goals.php" class="nav-link">OBIECTIVE</a>
+            </li>
+            <li class="nav-item">
+                <a href="venituri.php" class="nav-link">VENITURI</a>
+            </li>
+            <li class="nav-item">
+                <a href="progres.php" class="nav-link">PROGRES</a>
+            </li>
+            <li class="nav-item">
+                <a href="profile.php" class="nav-link">PROFIL</a>
+            </li>
+        </ul>
+        
+        <!-- Hamburger Menu Button -->
+        <button class="navbar-toggle" id="navbarToggle">
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </button>
+    </div>
+</nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const navbarToggle = document.getElementById('navbarToggle');
+    const navbarNav = document.getElementById('navbarNav');
+    
+    navbarToggle.addEventListener('click', function() {
+        navbarToggle.classList.toggle('active');
+        navbarNav.classList.toggle('active');
+    });
+    
+    // Închide meniul când se face click pe un link pe mobile
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                navbarToggle.classList.remove('active');
+                navbarNav.classList.remove('active');
+            }
+        });
+    });
+    
+    // Închide meniul când se redimensionează fereastra
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            navbarToggle.classList.remove('active');
+            navbarNav.classList.remove('active');
+        }
+    });
+    
+    // Închide meniul când se face click în afara lui
+    document.addEventListener('click', function(e) {
+        if (!navbarToggle.contains(e.target) && !navbarNav.contains(e.target)) {
+            navbarToggle.classList.remove('active');
+            navbarNav.classList.remove('active');
+        }
+    });
+});
+</script> 

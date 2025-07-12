@@ -60,6 +60,12 @@ $amount = filter_var($_POST['amount'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG
 $category_id = filter_var($_POST['category_id'], FILTER_SANITIZE_NUMBER_INT);
 $description = filter_var($_POST['description'], FILTER_SANITIZE_STRING);
 
+// Check if the date is in the future
+if (strtotime($date) > strtotime(date('Y-m-d'))) {
+    http_response_code(400);
+    die(json_encode(['success' => false, 'message' => 'Nu puteți modifica cheltuieli pentru date viitoare']));
+}
+
 // Validate amount
 if (!is_numeric($amount) || $amount <= 0) {
     http_response_code(400);

@@ -1,26 +1,50 @@
 <?php
 session_start();
-require_once 'database/db.php';
+include 'database/db.php';
 
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    echo json_encode(['success' => false, 'message' => 'Not logged in']);
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['id'])) {
+    echo json_encode(['success' => false, 'message' => 'Nu sunteți autentificat']);
     exit;
 }
 
-if (!isset($_GET['id'])) {
-    echo json_encode(['success' => false, 'message' => 'No expense ID provided']);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Metodă invalidă']);
     exit;
 }
 
-$id = filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT);
+if (!isset($_POST['id'])) {
+    echo json_encode(['success' => false, 'message' => 'ID-ul cheltuielii nu a fost specificat']);
+    exit;
+}
 
-// Delete expense only if it belongs to the current user
-$stmt = $conn->prepare("DELETE FROM expenses WHERE id = ? AND user_id = ?");
-$stmt->bind_param("ii", $id, $_SESSION['id']);
+$user_id = $_SESSION['id'];
+$expense_id = $_POST['id'];
 
-if ($stmt->execute()) {
-    echo json_encode(['success' => true]);
-} else {
-    echo json_encode(['success' => false, 'message' => 'Error deleting expense']);
+try {
+    // Verifică dacă cheltuiala există și aparține utilizatorului
+    $stmt = $conn->prepare("SELECT id FROM expenses WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $expense_id, $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        echo json_encode(['success' => false, 'message' => 'Cheltuiala nu a fost găsită sau nu vă aparține']);
+        exit;
+    }
+
+    // Șterge cheltuiala
+    $stmt = $conn->prepare("DELETE FROM expenses WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $expense_id, $user_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Cheltuiala a fost ștearsă cu succes']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Eroare la ștergerea cheltuielii']);
+    }
+} catch (Exception $e) {
+    error_log($e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'A apărut o eroare la ștergerea cheltuielii']);
 }
 ?>

@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         // Verificăm dacă obiectivul există și aparține utilizatorului
-        $check_sql = "SELECT current_amount FROM goals WHERE id = ? AND user_id = ?";
+        $check_sql = "SELECT current_amount, target_amount FROM goals WHERE id = ? AND user_id = ?";
         $check_stmt = $conn->prepare($check_sql);
         $check_stmt->bind_param("ii", $goal_id, $_SESSION['id']);
         $check_stmt->execute();
@@ -31,11 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $goal = $result->fetch_assoc();
         
+        // Verificăm dacă obiectivul este deja îndeplinit
+        if ($goal['current_amount'] >= $goal['target_amount']) {
+            throw new Exception("Nu poți retrage contribuții de la un obiectiv deja îndeplinit!");
+        }
+        
         // Verificăm dacă există suficienți bani pentru retragere
         if ($amount > $goal['current_amount']) {
-            $_SESSION['error_message'] = "Suma introdusă depășește suma disponibilă pentru retragere!";
-            header("Location: goals.php");
-            exit;
+            throw new Exception("Nu poți retrage mai mult decât suma curentă din obiectiv!");
         }
         
         // Adăugăm înregistrarea retragerii

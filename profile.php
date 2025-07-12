@@ -415,12 +415,12 @@ if (isset($_SESSION['username'])) {
         }
 
         .login-logs-list::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #aaaaaa;
             border-radius: 3px;
         }
 
         .login-logs-list::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            background: #888888;
         }
 
         /* Adăugăm stil pentru butonul de modificare cont */

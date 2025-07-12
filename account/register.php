@@ -40,25 +40,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Verificare username și email existente
         $stmt = $conn->prepare("SELECT username, email FROM users WHERE username = ? OR email = ?");
         $stmt->bind_param("ss", $username, $email);
-    $stmt->execute();
+        $stmt->execute();
         $result = $stmt->get_result();
         
         if ($result->num_rows > 0) {
             $row = $result->fetch_assoc();
             if ($row['username'] === $username) {
                 $error = "Username-ul este deja folosit!";
-    } else {
+            } else {
                 $error = "Email-ul este deja folosit!";
             }
         } else {
+            // Get random profile photo
+            $photos_file = '../data/default_profile_photos.json';
+            $photos_data = file_exists($photos_file) ? json_decode(file_get_contents($photos_file), true) : null;
+            $profile_photo = null;
+            
+            if ($photos_data && !empty($photos_data['photos'])) {
+                $profile_photo = $photos_data['photos'][array_rand($photos_data['photos'])];
+            }
+
             // Inserare utilizator nou
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $register_date = date('Y-m-d H:i:s');
             
-            $stmt = $conn->prepare("INSERT INTO users (username, email, password, register_date, retire, role) VALUES (?, ?, ?, ?, 0, 'user')");
-            $stmt->bind_param("ssss", $username, $email, $hashed_password, $register_date);
+            $stmt = $conn->prepare("INSERT INTO users (username, email, password, register_date, retire, role, profile_photo) VALUES (?, ?, ?, ?, 0, 'user', ?)");
+            $stmt->bind_param("sssss", $username, $email, $hashed_password, $register_date, $profile_photo);
 
             if ($stmt->execute()) {
+                // Track first login
+                include '../operations/track_login.php';
+                trackLogin($username, $conn);
+                
                 header("Location: login.php?registered=1");
                 exit();
             } else {

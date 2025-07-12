@@ -44,6 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $category_id = filter_var($_POST['category_id'], FILTER_SANITIZE_NUMBER_INT);
     $description = mb_convert_encoding($_POST['description'], 'UTF-8', 'UTF-8');
     
+    // Check if the date is in the future
+    if (strtotime($date) > strtotime(date('Y-m-d'))) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Nu puteți adăuga cheltuieli pentru date viitoare']);
+        exit;
+    }
+    
     // Validate amount
     if (!is_numeric($amount) || $amount <= 0) {
         http_response_code(400);

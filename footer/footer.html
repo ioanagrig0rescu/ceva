@@ -1,249 +1,313 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="margin:0; padding:0;">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css" integrity="sha256-3sPp8BkKUE7QyPSl6VfBByBroQbKxKG7tsusY2mhbVY=" crossorigin="anonymous" />
     <style>
-        body {
-     margin-top: 20px;
- }
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+        }
 
- .footer .footer-socila-icon a {
-     width: 30px;
-     height: 30px;
-     display: inline-flex;
-     align-items: center;
-     justify-content: center;
-     background: #F84E77;
-     color: #ffffff;
-     border-radius: 50%;
-     margin-right: 8px;
-     font-size: 15px;
- }
+        .footer {
+            width: 100vw;
+            margin: 0 !important;
+            padding: 0 !important;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            box-shadow: none;
+            margin-top: auto;
+            margin-bottom: 0;
+            display: block;
+        }
 
- .footer .footer-socila-icon a:hover {
-     background: #1baaa0;
- }
+        .footer * {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
 
- .footer .footer-links {
-     margin: 0;
- }
+        .footer .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
 
- .footer .footer-links li+li {
-     padding-top: 10px;
- }
+        .footer .footer-socila-icon a {
+            width: 45px;
+            height: 45px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border-radius: 50%;
+            margin-right: 12px;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
 
- .footer .footer-links li a {
-     position: relative;
- }
+        .footer .footer-socila-icon a:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
 
- .footer .footer-links li a:after {
-     content: "";
-     position: absolute;
-     width: 0px;
-     left: auto;
-     right: 0;
-     bottom: 0;
-     height: 1px;
-     transition: ease all 0.35s;
-     background: #F84E77;
- }
+        .about-link-section {
+            text-align: center;
+        }
 
- .footer .footer-links li a:hover:after {
-     width: 100%;
-     left: 0;
-     right: auto;
- }
+        .about-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 12px 24px;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
 
- .footer .footer-top {
-     padding-top: 1rem;
-     padding-bottom: 1rem;
- }
+        .about-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+        }
 
- .footer .footer-top h5,
- .footer .footer-top .h5 {
-     position: relative;
-     font-size: 1.2rem;
-     text-transform: uppercase;
- }
+        .about-link i {
+            font-size: 14px;
+        }
 
- @media (min-width: 768px) {
-     .footer .footer-top {
-         padding-top: 2rem;
-         padding-bottom: 1rem;
-     }
- }
+        .footer .footer-top {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
 
- @media (min-width: 992px) {
-     .footer .footer-top {
-         padding-top: 3rem;
-         padding-bottom: 2rem;
-     }
- }
+        .footer .footer-top h4 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
 
- .footer .footer-border-top {
-     border-top: 1px solid rgba(255, 255, 255, 0.1);
- }
+        @media (min-width: 768px) {
+            .footer .footer-top {
+                padding-top: 2rem;
+                padding-bottom: 1.5rem;
+            }
+        }
 
- .footer .footer-border-top.dark {
-     border-top: 1px solid rgba(16, 16, 16, 0.1);
- }
+        @media (min-width: 992px) {
+            .footer .footer-top {
+                padding-top: 3rem;
+                padding-bottom: 2rem;
+            }
+        }
 
- .footer .footer-border-bottom {
-     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
- }
+        .footer .footer-border-top {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
- .footer .footer-border-bottom.dark {
-     border-bottom: 1px solid rgba(16, 16, 16, 0.1);
- }
+        .footer .footer-border-bottom {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
- .bg-dark-gradient {
-     background: linear-gradient( 180deg, #101010 50%, black 100%) repeat-x !important;
- }
+        a {
+            text-decoration: none
+        }
+        
+        .avatar-lg img {
+            width: 140px;
+            height: 140px;
+            border-radius: 16px;
+        }
 
- .white-link a {
-     color: rgba(255, 255, 255, 0.65);
- }
+        .text-white {
+            color: #fff !important;
+        }
 
- a {
-     text-decoration: none
- }
- 
- .avatar-lg img {
-    width:90px;
-    height:90px;
-}
+        .footer-bottom {
+            padding: 1rem 0;
+            margin: 0;
+            border: none;
+        }
 
-.text-white{
-color:#fff !important;
-}
+        .footer-bottom p {
+            margin: 0;
+            padding: 0;
+        }
+
+        .footer-content {
+            padding: 3rem 0 4rem 0;
+            min-height: 300px;
+        }
+
+        .newsletter-section {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+        }
+
+        .company-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4rem;
+            margin-top: 2rem;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .logo-social {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4rem;
+            width: 100%;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .social-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .contact-info {
+            text-align: center;
+        }
+
+        .footer-bottom {
+            padding: 2rem 0;
+            margin: 0;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                padding: 2rem 0 3rem 0;
+                min-height: 250px;
+            }
+            
+            .company-info {
+                flex-direction: column;
+                text-align: center;
+                gap: 2rem;
+            }
+            
+            .contact-info {
+                text-align: center;
+            }
+            
+            .logo-social {
+                flex-direction: column;
+                gap: 2rem;
+            }
+            
+            .social-section {
+                gap: 1.5rem;
+            }
+            
+            .newsletter-section {
+                margin-bottom: 2rem;
+                padding-bottom: 1.5rem;
+            }
+        }
     </style>
 </head>
-<body>
+<body style="margin:0; padding:0;">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css" integrity="sha256-2XFplPlrFClt0bIdPgpz8H7ojnk10H69xRqd9+uTShA=" crossorigin="anonymous" />
-    <footer class="bg-dark-gradient footer">
-        <div class="footer-top">
+    <footer class="footer">
+        <div class="footer-content">
             <div class="container">
-                <div class="footer-border-bottom pb-6 mb-5">
-                    <div class="row">
+                <!-- Newsletter Section -->
+                <div class="newsletter-section footer-border-bottom pb-4">
+                    <div class="row align-items-center">
                         <div class="col-lg-4 col-xl-3">
-                            <h4 class="text-white">
-                                Aboneza-te pentru noutati
+                            <h4 class="text-white mb-3 mb-lg-0">
+                                Abonează-te pentru noutăți
                             </h4>
                         </div>
-                        <div class="col-lg-4 col-xl-6">
+                        <div class="col-lg-5 col-xl-6">
                             <form class="d-flex flex-row mb-2 p-1 bg-white input-group">
-                                <input type="email" class="form-control rounded-0 border-0" placeholder="Introdu emailul tau..">
-                                <button class="btn btn-secondary rounded-0 flex-shrink-0 disabled" type="submit">Aboneaza-te</button>
+                                <input type="email" class="form-control rounded-0 border-0" placeholder="Introdu emailul tău...">
+                                <button class="btn btn-light rounded-0 flex-shrink-0" type="submit" style="background: rgba(255, 255, 255, 0.9); border: none; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255, 255, 255, 1)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.9)'; this.style.transform='translateY(0)'">Abonează-te</button>
                             </form>
                         </div>
-                        <div class="col-lg-4 col-xl-3">
-                            <div class="text-lg-end text-white">
-                                <span class="h6">Apeleaza-ne</span><br>
-                                <span class="h3">+40 721 149 486</span>
+                        <div class="col-lg-3 col-xl-3">
+                            <div class="contact-info text-white">
+                                <span class="h6">Apelează-ne</span><br>
+                                <span class="h3">+40 721 149 486</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-sm-6 col-lg-3 my-4">
-                        <div class="mb-4">
-                            <img src="static/img/logo-light.svg" title="" alt="">
+
+                <!-- Company Info Section -->
+                <div class="company-info">
+                    <div class="logo-social">
+                        <!-- Logo Section (Left) -->
+                        <div class="logo-section">
+                            <div class="avatar avatar-lg">
+                                <img src="profile-photos/logo.png" title="Budget Master" alt="Budget Master Logo">
+                            </div>
+                            <div class="text-white">
+                                <h5 class="mb-1">Budget Master</h5>
+                                <p class="mb-0 opacity-75">Gestionează-ți finanțele cu ușurință</p>
+                            </div>
                         </div>
-                        <div class="text-white-65 mb-4 text-white">Contacteaza-ne si pe social media.</div>
-                        <div class="nav footer-socila-icon">
-                            <a href="#">
-                        <i class="fab fa-facebook-f"></i>
-                        </a>
-                                                <a href="#">
-                        <i class="fab fa-twitter"></i>
-                        </a>
-                                                <a href="#">
-                        <i class="fab fa-instagram"></i>
-                        </a>
-                                                <a href="#">
-                        <i class="fab fa-linkedin-in"></i>
-                        </a>
-                        </div>
-                    </div>
-                    <div class="col-sm-6 col-lg-2 my-4">
-                        <h5 class="text-white h6 mb-4">Client</h5>
-                        <ul class="list-unstyled white-link footer-links">
-                            <li>
-                                <a href="#">Documentatie</a>
-                            </li>
-                            <li>
-                                <a href="#">Centru de ajutor</a>
-                            </li>
-                            <li>
-                                <a href="#">Preturi</a>
-                            </li>
-                            <li>
-                                <a href="#">Contacteaza-ne!</a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="col-sm-6 col-lg-2 my-4">
-                        <h5 class="text-white h6 mb-4">Produse</h5>
-                        <ul class="list-unstyled white-link footer-links">
-                            <li>
-                                <a href="#">Portofoliu</a>
-                            </li>
-                            <li>
-                                <a href="#">Blog</a>
-                            </li>
-                            <li>
-                                <a href="#">Alatura-te echipei</a>
-                            </li>
-                            <li>
-                                <a href="#">Elemente</a>
-                            </li>
-                            <li>
-                                <a href="#">Produse</a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="col-sm-6 col-lg-2 my-4">
-                        <h5 class="text-white h6 mb-4">Compania</h5>
-                        <ul class="list-unstyled white-link footer-links">
-                            <li>
-                                <a href="#">Despre</a>
-                            </li>
-                            <li>
-                                <a href="#">Cariere</a>
-                            </li>
-                            <li>
-                                <a href="#">Legal &amp; Securitate</a>
-                            </li>
-                            <li>
-                                <a href="#">Termeni si conditii</a>
-                            </li>
-                            <li>
-                                <a href="#">Angajam!</a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="col-sm-6 col-lg-3 my-4">
-                        <h5 class="text-white h6 mb-4">Compania</h5>
-                        <div class="white-link">
-                            <div class="d-flex pb-3">
-                                <div class="avatar avatar-lg rounded">
-                                    <img src="https://i.ibb.co/tT1b01zw/buget-logo.png" title="" alt="">
-                                </div>
-                                <div class="col ps-3">
-                                    <small class="text-white">13 Mai 2025</small>
-                                    <h6 class="font-w-500 h6 m-0"><a class="text-white" href="#">Afla mai multe despre Budget Master...</a></h6>
-                                </div>
+                        
+                        <!-- Social Section (Right) -->
+                        <div class="social-section">
+                            <div class="about-link-section">
+                                <a href="about.php" class="about-link">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Despre noi
+                                </a>
+                            </div>
+                            
+                            <div class="nav footer-socila-icon d-flex justify-content-center">
+                                <a href="#" title="Facebook">
+                                    <i class="fab fa-facebook-f"></i>
+                                </a>
+                                <a href="#" title="Twitter">
+                                    <i class="fab fa-twitter"></i>
+                                </a>
+                                <a href="#" title="Instagram">
+                                    <i class="fab fa-instagram"></i>
+                                </a>
+                                <a href="#" title="LinkedIn">
+                                    <i class="fab fa-linkedin-in"></i>
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="footer-bottom footer-border-top light py-3">
-            <div class="container text-center">
-                <p class="m-0 text-white">© 2025 copyright - Ioana Grigorescu - <a href="#" class="text-reset text-white">Budget Master</a></p>
+        
+        <!-- Copyright Section -->
+        <div class="footer-bottom footer-border-top">
+            <div class="container">
+                <p class="text-white text-center">© 2025 Budget Master - Dezvoltat de Ioana Grigorescu. Toate drepturile rezervate.</p>
             </div>
         </div>
     </footer>

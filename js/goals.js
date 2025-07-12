@@ -188,3 +188,54 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+function deleteGoal(goalId) {
+    if (confirm('Ești sigur că vrei să ștergi acest obiectiv?')) {
+        // Create form data
+        const formData = new FormData();
+        formData.append('goal_id', goalId);
+
+        // Send delete request
+        fetch('delete_goal.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text();
+        })
+        .then(() => {
+            // Find and remove the goal card
+            const goalCard = document.getElementById(`goal-card-${goalId}`);
+            if (goalCard) {
+                goalCard.remove();
+                
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    Obiectivul a fost șters cu succes!
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+                
+                // Reload page after 1 second to update statistics
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                A apărut o eroare la ștergerea obiectivului.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+        });
+    }
+}

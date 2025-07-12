@@ -9,6 +9,49 @@ include 'sesion-check/check.php';
 include 'plugins/bootstrap.html';
 include 'database/db.php';
 
+// Array cu iconițe pentru fiecare categorie
+$category_icons = [
+    'transport' => ['icon' => 'fa-car', 'color' => '#4CAF50'],
+    'calatorii' => ['icon' => 'fa-plane', 'color' => '#2196F3'],
+    'familie' => ['icon' => 'fa-users', 'color' => '#E91E63'],
+    'casa' => ['icon' => 'fa-home', 'color' => '#795548'],
+    'locuinta' => ['icon' => 'fa-home', 'color' => '#795548'],
+    'educatie' => ['icon' => 'fa-graduation-cap', 'color' => '#9C27B0'],
+    'sanatate' => ['icon' => 'fa-heartbeat', 'color' => '#F44336'],
+    'tehnologie' => ['icon' => 'fa-laptop', 'color' => '#607D8B'],
+    'investitii' => ['icon' => 'fa-chart-line', 'color' => '#FF9800'],
+    'divertisment' => ['icon' => 'fa-smile', 'color' => '#00BCD4'],
+    'hobby' => ['icon' => 'fa-palette', 'color' => '#8BC34A'],
+    'urgente' => ['icon' => 'fa-exclamation-circle', 'color' => '#f44336'],
+    'vacanta' => ['icon' => 'fa-umbrella-beach', 'color' => '#2196F3'],
+    'default' => ['icon' => 'fa-piggy-bank', 'color' => '#9E9E9E']
+];
+
+// Funcție pentru a obține iconița și culoarea pentru o categorie
+function getCategoryInfo($category_name, $category_icons) {
+    if (empty($category_name)) {
+        return $category_icons['default'];
+    }
+
+    // Convertim numele categoriei la lowercase și eliminăm diacriticele
+    $normalized_name = strtolower(trim($category_name));
+    $normalized_name = str_replace(
+        ['ă', 'â', 'î', 'ș', 'ț', 'Ă', 'Â', 'Î', 'Ș', 'Ț'],
+        ['a', 'a', 'i', 's', 't', 'A', 'A', 'I', 'S', 'T'],
+        $normalized_name
+    );
+    
+    // Verificăm dacă există o potrivire exactă
+    foreach ($category_icons as $key => $info) {
+        if (strpos($normalized_name, $key) !== false) {
+            return $info;
+        }
+    }
+    
+    // Dacă nu găsim o potrivire, returnăm valorile default
+    return $category_icons['default'];
+}
+
 // Funcție pentru a obține statisticile generale ale obiectivelor
 function getGoalsStats($conn, $user_id, $year) {
     $stats = [
@@ -48,18 +91,33 @@ function getGoalsStats($conn, $user_id, $year) {
     return $stats;
 }
 
-// Funcție pentru a verifica obiectivele cu deadline apropiat
+// Funcție pentru a verifica obiectivele cu deadline apropiat și fără progres
 function getApproachingDeadlines($conn, $user_id) {
     $warnings = [];
     
+    // Obiective cu deadline apropiat sau depășit
     $sql = "SELECT id, name, target_amount, current_amount, deadline,
-            DATEDIFF(deadline, CURDATE()) as days_remaining
+            DATEDIFF(deadline, CURDATE()) as days_remaining,
+            CASE 
+                WHEN current_amount = 0 THEN 'no_progress'
+                WHEN DATEDIFF(deadline, CURDATE()) < 0 THEN 'overdue'
+                WHEN DATEDIFF(deadline, CURDATE()) <= 14 THEN 'deadline_soon'
+                ELSE 'normal'
+            END as warning_type
             FROM goals 
             WHERE user_id = ? 
-            AND current_amount < target_amount 
-            AND DATEDIFF(deadline, CURDATE()) <= 14 
-            AND DATEDIFF(deadline, CURDATE()) >= 0
-            ORDER BY days_remaining ASC";
+            AND (
+                (current_amount < target_amount AND DATEDIFF(deadline, CURDATE()) <= 14)
+                OR current_amount = 0
+                OR (current_amount < target_amount AND DATEDIFF(deadline, CURDATE()) < 0)
+            )
+            ORDER BY 
+                CASE 
+                    WHEN DATEDIFF(deadline, CURDATE()) < 0 THEN 0
+                    WHEN current_amount = 0 THEN 1 
+                    ELSE 2 
+                END,
+                days_remaining ASC";
     
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $user_id);
@@ -76,7 +134,8 @@ function getApproachingDeadlines($conn, $user_id) {
             'days_remaining' => $goal['days_remaining'],
             'remaining_amount' => $remaining_amount,
             'progress_percent' => $progress_percent,
-            'deadline' => $goal['deadline']
+            'deadline' => $goal['deadline'],
+            'warning_type' => $goal['warning_type']
         ];
     }
     
@@ -169,11 +228,12 @@ $sql = "SELECT g.*, c.name as category_name,
             CONCAT(m.target_amount, ':', COALESCE(m.description, ''), ':', m.is_completed)
             ORDER BY m.target_amount ASC
             SEPARATOR '|'
-        ) FROM goal_milestones m WHERE m.goal_id = g.id) as milestones
+        ) FROM goal_milestones m WHERE m.goal_id = g.id) as milestones,
+        CASE WHEN g.current_amount >= g.target_amount THEN 1 ELSE 0 END as is_completed
         FROM goals g 
         LEFT JOIN categories c ON g.category_id = c.id 
         WHERE g.user_id = ? 
-        ORDER BY g.current_amount >= g.target_amount ASC, g.created_at DESC
+        ORDER BY is_completed ASC, g.created_at DESC
         LIMIT ? OFFSET ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("iii", $_SESSION['id'], $per_page, $offset);
@@ -201,21 +261,261 @@ while ($row = $categories_result->fetch_assoc()) {
 <html lang="ro">
 <head>
     <meta charset="utf-8">
-    <title>Obiective Financiare - Budget Master</title>
+    <title>Budget Master</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #f3f3f3;
-            color: #616f80;
-            padding-top: 60px;
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .content-wrapper {
+            flex: 1 0 auto;
+            width: 100%;
+            margin: 0 !important;
+            padding: 80px 0 0 0 !important; /* Increased top padding for better spacing */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content-wrapper > .container {
+            flex: 1 0 auto;
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        .content-wrapper > *:last-child {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        footer {
+            flex-shrink: 0;
+            width: 100vw;
+            margin-left: calc(-50vw + 50%);
+            margin-right: calc(-50vw + 50%);
+            position: relative;
+            left: 50%;
+            right: 50%;
+            transform: translateX(-50%);
+            background-color: #f8f9fa;
+            padding: 0;
+            margin-top: auto;
+            margin-bottom: 0;
+        }
+
+        footer .container-fluid {
+            width: 100%;
+            padding: 1rem;
+            margin: 0;
+        }
+
+        footer .row {
+            margin: 0;
+            width: 100%;
+        }
+
+        footer .col {
+            padding: 0.5rem;
+        }
+
+        /* Widget Styles */
+        .widget {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+            width: 100%;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .widget-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .widget-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: #2d3748;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .widget-body {
+            padding: 1.5rem;
+        }
+
+        /* Statistics Grid */
+        .statistics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .statistic-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .statistic-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .notification-item.no_progress .notification-icon {
+            color: #ff9800;
+        }
+
+        .notification-item.overdue .notification-icon {
+            color: #f44336;
+        }
+
+        .notification-item.deadline_soon .notification-icon {
+            color: #FFD700;
+        }
+
+        .notification-item.no_progress .notification-title,
+        .notification-item.no_progress .notification-text {
+            color: #e65100;
+        }
+
+        .notification-item.overdue .notification-title,
+        .notification-item.overdue .notification-text {
+            color: #d32f2f;
+        }
+
+        .notification-item.deadline_soon .notification-title,
+        .notification-item.deadline_soon .notification-text {
+            color: #f57f17;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+
+        .notification-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+
+        /* Notifications Container */
+        .notifications-container {
+            margin-top: 1.5rem;
+        }
+
+        .notifications-title {
+            font-size: 1.1rem;
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notification-item {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            gap: 0.75rem;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .notification-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .notification-item.no_progress {
+            border-left: 4px solid #ff9800;
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .notification-item.overdue {
+            border-left: 4px solid #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .notification-item.deadline_soon {
+            border-left: 4px solid #FFD700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .notification-date {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .notification-details {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .amount-info {
+            margin-bottom: 0.75rem;
+        }
+
+        .progress {
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background-color: #42a5f5;
+            transition: width 0.6s ease;
         }
 
         .card {
@@ -281,37 +581,71 @@ while ($row = $categories_result->fetch_assoc()) {
         }
 
         .add-goal-card {
-            border: 2px dashed #dee2e6;
+            background: linear-gradient(135deg, rgba(66, 165, 245, 0.05) 0%, rgba(66, 165, 245, 0.1) 100%);
+            border: 2px dashed rgba(66, 165, 245, 0.3);
+            border-radius: 15px;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            padding: 0.75rem;
+            padding: 1.5rem;
             gap: 1.5rem;
-            min-height: 80px;
+            min-height: 100px;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            max-width: 1100px;
+            margin: 2rem auto;
+        }
+
+        .add-goal-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 165, 245, 0.15);
+            border-color: rgba(66, 165, 245, 0.5);
+            background: linear-gradient(135deg, rgba(66, 165, 245, 0.1) 0%, rgba(66, 165, 245, 0.15) 100%);
+        }
+
+        .add-goal-card:hover .add-goal-icon {
+            transform: scale(1.1) rotate(90deg);
+            background: rgba(66, 165, 245, 0.15);
+            color: #42a5f5;
+        }
+
+        .add-goal-card:hover .goal-content h5 {
+            color: #42a5f5;
         }
 
         .add-goal-icon {
-            font-size: 1.75rem;
-            width: 45px;
-            height: 45px;
+            font-size: 2rem;
+            width: 60px;
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            background: #f8f9fa;
-            color: #007bff;
+            background: rgba(66, 165, 245, 0.1);
+            color: #42a5f5B3;
             flex-shrink: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .add-goal-card .goal-content {
+            flex: 1;
         }
 
         .add-goal-card .goal-content h5 {
-            font-size: 1rem;
-            margin-bottom: 0.2rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #2d3748;
+            transition: color 0.3s ease;
         }
 
         .add-goal-card .goal-content p {
-            font-size: 0.85rem;
+            font-size: 1rem;
+            color: #64748b;
             margin-bottom: 0;
+            max-width: 80%;
         }
 
         .goal-actions {
@@ -382,39 +716,6 @@ while ($row = $categories_result->fetch_assoc()) {
         .withdrawal-form .form-control:focus {
             border-color: #ffc107;
             box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
-        }
-
-        /* Navbar Styles */
-        .navbar {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(
-                to right,
-                rgba(33, 37, 41, 0.97),
-                rgba(33, 37, 41, 0.97)
-            );
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar-brand {
-            font-weight: 600;
-            font-size: 1.5rem;
-            color: white !important;
-        }
-
-        .navbar-nav .nav-link {
-            color: rgba(255, 255, 255, 0.9) !important;
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            transition: color 0.3s ease;
-        }
-
-        .navbar-nav .nav-link:hover {
-            color: rgba(255, 255, 255, 1) !important;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
         }
 
         /* Form Styles */
@@ -523,21 +824,30 @@ while ($row = $categories_result->fetch_assoc()) {
         .progress-container {
             position: relative;
             margin: 20px 0;
+            overflow: visible;
         }
 
         .progress-wrapper {
             position: relative;
             height: 25px;
-            margin-bottom: 10px;
+            margin-bottom: 25px;
+            overflow: visible;
         }
 
         .progress {
-            position: absolute;
+            position: relative;
             width: 100%;
             background-color: #f8f9fa;
             border-radius: 15px;
-            overflow: visible !important;
-            z-index: 1;
+            overflow: hidden !important;
+            height: 25px;
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+            background-color: #007bff;
+            height: 100%;
+            border-radius: 15px;
         }
 
         .milestone-marker {
@@ -653,6 +963,7 @@ while ($row = $categories_result->fetch_assoc()) {
             background-color: #f8f9fa;
             border-radius: 8px;
             border-left: 4px solid #e9ecef;
+            margin-top: 30px;
         }
 
         .remaining-amount-message > div {
@@ -769,6 +1080,17 @@ while ($row = $categories_result->fetch_assoc()) {
             transition: opacity 0.5s ease-in;
         }
         
+        .warning-alert.no-progress {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .warning-alert.overdue {
+            background-color: #fff0f0;
+            border-left-color: #dc3545;
+            color: #842029;
+        }
+        
         .warning-alert .progress {
             height: 10px;
             margin-top: 10px;
@@ -777,6 +1099,22 @@ while ($row = $categories_result->fetch_assoc()) {
         .warning-alert .deadline-info {
             color: #856404;
             font-weight: bold;
+        }
+        
+        .warning-alert.no-progress .deadline-info {
+            color: #721c24;
+        }
+
+        .warning-alert.overdue .deadline-info {
+            color: #842029;
+        }
+
+        .warning-alert.overdue .progress-bar {
+            background-color: #dc3545;
+        }
+
+        .warning-alert.overdue .warning-icon {
+            color: #dc3545;
         }
 
         @keyframes fadeIn {
@@ -787,91 +1125,1016 @@ while ($row = $categories_result->fetch_assoc()) {
         .warning-alert {
             animation: fadeIn 0.5s ease-in-out;
         }
+
+        .warning-icon {
+            margin-right: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .no-progress .warning-icon {
+            color: #dc3545;
+        }
+        
+        .deadline-soon .warning-icon {
+            color: #ffc107;
+        }
+
+        /* Stiluri pentru iconițe */
+        .goal-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-right: 1rem;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .goal-card:hover .goal-icon {
+            transform: scale(1.1);
+        }
+
+        .card-header[role="button"] {
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .card-header[role="button"]:hover {
+            background-color: #198754 !important;
+        }
+
+        .card-header .fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+
+        .collapse.show + .card-header .fa-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .completed-goals-section {
+            margin-top: 2rem;
+        }
+
+        .completed-goals-header {
+            background-color: #198754 !important;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 1rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+        }
+
+        .completed-goals-header:hover {
+            background-color: #157347 !important;
+        }
+
+        .completed-goals-header .fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+
+        [data-bs-toggle="collapse"][aria-expanded="true"] .fa-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .completed-goal-card {
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .completed-goal-card:hover {
+            opacity: 1;
+        }
+
+        .completed-goal-card .goal-actions {
+            opacity: 0.7;
+        }
+
+        .completed-goal-card:hover .goal-actions {
+            opacity: 1;
+        }
+
+        /* Stil pentru paginare */
+        // ... existing code ...
+
+        .transition-transform {
+            transition: transform 0.3s ease;
+        }
+        [aria-expanded="true"] .transition-transform {
+            transform: rotate(180deg);
+        }
+
+        .completed-goals-header {
+            background-color: #198754 !important;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .completed-goals-header:hover {
+            background-color: #157347 !important;
+        }
+
+        .completed-goals-header .fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+
+        [data-bs-toggle="collapse"][aria-expanded="true"] .fa-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .collapse-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .collapse-section.show {
+            max-height: 2000px; /* valoare mare pentru a permite tot conținutul */
+            transition: max-height 0.3s ease-in;
+        }
+
+        .rotate-icon {
+            transform: rotate(180deg) !important;
+            transition: transform 0.3s ease;
+        }
+
+        .history-toggle .fa-chevron-down,
+        .completed-goals-header .fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+
+        /* Stiluri pentru footer în pagina goals */
+        footer {
+            width: 100vw;
+            margin-left: calc(-50vw + 50%);
+            margin-right: calc(-50vw + 50%);
+            position: relative;
+            left: 50%;
+            right: 50%;
+            transform: translateX(-50%);
+        }
+
+        .content-wrapper {
+            min-height: calc(100vh - 60px); /* ajustează valoarea în funcție de înălțimea footer-ului */
+            padding-bottom: 60px; /* spațiu pentru footer */
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* ... existing styles ... */
+
+        /* Stiluri pentru footer în pagina goals */
+        body {
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            flex: 1 0 auto;
+        }
+
+        footer {
+            flex-shrink: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+            margin-top: auto;
+        }
+
+        footer .container {
+            max-width: 100%;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        footer .row {
+            margin-left: 0;
+            margin-right: 0;
+            width: 100%;
+        }
+
+        footer .col {
+            padding: 1rem;
+        }
+
+        /* Stiluri pentru footer */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content-wrapper {
+            flex: 1;
+        }
+
+        footer {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+        }
+
+        footer .container-fluid {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+
+        footer .row {
+            margin: 0;
+            padding: 1rem;
+            width: 100%;
+        }
+
+        footer .col {
+            padding: 0 1rem;
+        }
+
+        /* Adăugăm stilurile necesare pentru animație */
+        .collapse-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .collapse-section.show {
+            max-height: 2000px;
+            transition: max-height 0.3s ease-in;
+        }
+
+        .history-toggle .fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+
+        .history-toggle.collapsed .fa-chevron-down {
+            transform: rotate(0deg);
+        }
+
+        .history-toggle:not(.collapsed) .fa-chevron-down,
+        .fa-chevron-down.rotate-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Stiluri pentru navbar spacing */
+        body {
+            padding-top: 56px; /* Height of the navbar */
+        }
+
+        .content-wrapper {
+            min-height: calc(100vh - 60px);
+            padding-bottom: 60px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .content-wrapper > .container {
+            padding-top: 2rem; /* Additional spacing from navbar */
+        }
+
+        .statistics-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+        }
+
+        /* ... existing styles ... */
+
+        /* Form Floating Styles */
+        .form-floating > label {
+            padding: 0.5rem 0.75rem;
+        }
+
+        .form-floating > .form-control {
+            padding: 0.5rem 0.75rem;
+            height: calc(3.5rem + 2px);
+            line-height: 1.25;
+        }
+
+        .form-floating > .form-control::placeholder {
+            color: transparent;
+        }
+
+        .form-floating > .form-control:focus,
+        .form-floating > .form-control:not(:placeholder-shown) {
+            padding-top: 1.625rem;
+            padding-bottom: 0.625rem;
+        }
+
+        .form-floating > .form-control:focus ~ label,
+        .form-floating > .form-control:not(:placeholder-shown) ~ label {
+            opacity: 0.65;
+            transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+            background-color: white;
+            height: auto;
+            padding: 0 0.5rem;
+            margin-left: 0.5rem;
+        }
+
+        /* Modal Header Style */
+        .modal-header.bg-primary {
+            background-color: #42a5f5 !important;
+        }
+
+        /* Milestone Container Style */
+        .milestone-entries {
+            max-height: 250px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border-color: #dee2e6 !important;
+        }
+
+        .milestone-entry {
+            background-color: white;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 0.75rem !important;
+        }
+
+        .milestone-entry:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        /* Custom Button Styles */
+        .btn-outline-danger {
+            border-color: #dc3545;
+            color: #dc3545;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-danger:hover {
+            background-color: #dc3545;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        /* Form Select Style */
+        .form-select {
+            padding-top: 1.625rem;
+            padding-bottom: 0.625rem;
+            height: calc(3.5rem + 2px);
+        }
+
+        .form-floating > .form-select ~ label {
+            opacity: 0.65;
+            transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+        }
+
+        /* Improved Focus States */
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #42a5f5;
+            box-shadow: 0 0 0 0.25rem rgba(66, 165, 245, 0.25);
+        }
+
+        /* ... existing styles ... */
+
+        /* Modal Styles */
+        .modal-content {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid #e9ecef;
+            background: #f8f9fa;
+            border-radius: 15px 15px 0 0;
+            padding: 1.5rem;
+        }
+
+        .modal-header .modal-title {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1.25rem;
+        }
+
+        .modal-header .btn-close {
+            background-color: #e9ecef;
+            border-radius: 50%;
+            padding: 0.75rem;
+            opacity: 1;
+            transition: all 0.2s ease;
+        }
+
+        .modal-header .btn-close:hover {
+            background-color: #dee2e6;
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #e9ecef;
+            padding: 1.25rem 1.5rem;
+            border-radius: 0 0 15px 15px;
+        }
+
+        .modal .form-label {
+            font-weight: 500;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal .form-control, .modal .form-select {
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .modal .form-control:focus, .modal .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        .modal textarea.form-control {
+            min-height: 100px;
+        }
+
+        .milestone-entries {
+            max-height: 250px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border-color: #dee2e6 !important;
+        }
+
+        .milestone-entry {
+            background-color: white;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 0.75rem !important;
+        }
+
+        .milestone-entry:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .btn-outline-danger {
+            border-color: #dc3545;
+            color: #dc3545;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-danger:hover {
+            background-color: #dc3545;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        /* ... existing styles ... */
+
+        /* Button Animation Styles */
+        .btn-animate {
+            position: relative;
+            overflow: hidden;
+            transform: translate3d(0, 0, 0);
+            border-radius: 15px !important;
+        }
+
+        .btn-animate::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease-out, height 0.6s ease-out;
+        }
+
+        .btn-animate:active::before {
+            width: 200%;
+            height: 200%;
+            transition: width 0s, height 0s;
+        }
+
+        .btn-animate-primary {
+            background-color: #42a5f5 !important;
+            color: white !important;
+            border: 1px solid #42a5f5 !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .btn-animate-primary:hover {
+            background-color: #1e88e5 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(66, 165, 245, 0.2) !important;
+        }
+
+        .btn-animate-primary:active {
+            transform: translateY(0) !important;
+        }
+
+        .btn-animate-secondary {
+            background-color: white !important;
+            color: #6c757d !important;
+            border: 1px solid #dee2e6 !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .btn-animate-secondary:hover {
+            background-color: #f8f9fa !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+            border-color: #42a5f5 !important;
+        }
+
+        .btn-animate-secondary:active {
+            transform: translateY(0) !important;
+        }
+
+        .btn-animate-milestone {
+            background-color: #42a5f5B3 !important;
+            color: white !important;
+            border: 1px solid #42a5f5 !important;
+            transition: all 0.3s ease !important;
+            border-radius: 15px !important;
+        }
+
+        .btn-animate-milestone:hover {
+            background-color: #42a5f5CC !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(66, 165, 245, 0.2) !important;
+        }
+
+        .btn-animate-milestone:active {
+            transform: translateY(0) !important;
+        }
+
+        /* Updated Goal Actions - Modern Button Style */
+        .goal-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .goal-actions .action-btn {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.8);
+            color: #64748b;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .goal-actions .action-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .goal-actions .action-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .goal-actions .action-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .goal-actions .action-btn:active::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .goal-actions .contribute-btn {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.2) 100%);
+            border-color: rgba(34, 197, 94, 0.2);
+            color: #059669;
+        }
+
+        .goal-actions .contribute-btn:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.3) 100%);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #047857;
+        }
+
+        .goal-actions .withdraw-btn {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.2) 100%);
+            border-color: rgba(245, 158, 11, 0.2);
+            color: #d97706;
+        }
+
+        .goal-actions .withdraw-btn:hover {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.3) 100%);
+            border-color: rgba(245, 158, 11, 0.4);
+            color: #b45309;
+        }
+
+        .goal-actions .edit-btn {
+            background: linear-gradient(135deg, rgba(66, 165, 245, 0.1) 0%, rgba(66, 165, 245, 0.2) 100%);
+            border-color: rgba(66, 165, 245, 0.2);
+            color: #2563eb;
+        }
+
+        .goal-actions .edit-btn:hover {
+            background: linear-gradient(135deg, rgba(66, 165, 245, 0.2) 0%, rgba(66, 165, 245, 0.3) 100%);
+            border-color: rgba(66, 165, 245, 0.4);
+            color: #1d4ed8;
+        }
+
+        .goal-actions .delete-btn {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.2) 100%);
+            border-color: rgba(239, 68, 68, 0.2);
+            color: #dc2626;
+        }
+
+        .goal-actions .delete-btn:hover {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.3) 100%);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #b91c1c;
+        }
+
+        /* Enhanced Goal Card Styling */
+        .card {
+            border: none;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 1) 100%);
+            backdrop-filter: blur(10px);
+            width: 100%;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Ensure all goal cards have consistent width */
+        .card.mb-4,
+        .card.mb-3,
+        .completed-goal-card {
+            width: 100%;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Completed goals section container */
+        .card.mt-4 {
+            width: 100%;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .goal-card {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 1.5rem;
+            gap: 1.5rem;
+            position: relative;
+        }
+
+        .goal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #42a5f5 0%, #667eea 100%);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .goal-icon {
+            font-size: 2.2rem;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 249, 250, 0.9) 100%);
+            color: #42a5f5;
+            flex-shrink: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .goal-card:hover .goal-icon {
+            transform: scale(1.05) rotate(5deg);
+            box-shadow: 0 4px 15px rgba(66, 165, 245, 0.2);
+        }
+
+        .goal-content {
+            flex-grow: 1;
+        }
+
+        .goal-content h5.card-title {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .amount {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+
+        .deadline, .category {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .deadline i, .category i {
+            color: #94a3b8;
+        }
+
+        .progress {
+            height: 10px;
+            border-radius: 8px;
+            margin-top: 0.75rem;
+            background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 100%);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .progress-bar {
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(90deg, #42a5f5 0%, #667eea 100%);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* History Section Enhanced */
+        .history-section {
+            border-top: 1px solid rgba(226, 232, 240, 0.6);
+            background: linear-gradient(135deg, rgba(248, 249, 250, 0.5) 0%, rgba(255, 255, 255, 0.8) 100%);
+        }
+
+        .history-toggle {
+            text-decoration: none;
+            color: #64748b;
+            padding: 1rem 1.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+            border-radius: 0 0 16px 16px;
+            font-weight: 500;
+        }
+
+        .history-toggle:hover {
+            color: #42a5f5;
+            background: linear-gradient(135deg, rgba(66, 165, 245, 0.05) 0%, rgba(66, 165, 245, 0.1) 100%);
+        }
+
+        .history-toggle:focus {
+            box-shadow: none;
+        }
+
+        .history-toggle .fa-chevron-down {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .history-toggle.collapsed .fa-chevron-down {
+            transform: rotate(0deg);
+        }
+
+        .history-toggle:not(.collapsed) .fa-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .history-content {
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .history-content .table {
+            margin-bottom: 0;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .history-content .table td {
+            padding: 0.75rem;
+            vertical-align: middle;
+            border-color: rgba(226, 232, 240, 0.6);
+        }
+
+        .history-content .badge {
+            font-weight: 500;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
 
-<!-- Navbar -->
+<!-- Include Navbar -->
 <?php include 'navbar/navbar.php'; ?>
 
 <!-- Main Content -->
 <div class="content-wrapper">
-    <div class="container">
-        <h2 class="mb-4">Obiective Financiare</h2>
-
-        <!-- Goals Summary Section -->
-        <div class="goals-summary">
-            <h4><i class="fas fa-chart-line me-2"></i>Progres General</h4>
-            
-            <div class="progress-stats">
-                <div class="stat-item">
-                    <div class="stat-number"><?php echo $goals_stats['completed']; ?>/<?php echo $goals_stats['total']; ?></div>
-                    <div class="stat-label">Obiective Atinse în <?php echo $current_year; ?></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number"><?php echo count($goals_stats['inactive']); ?></div>
-                    <div class="stat-label">Necesită Atenție</div>
-                </div>
+    <div class="container py-4">
+        <!-- Statistici și Alerte -->
+        <div class="widget">
+            <div class="widget-header">
+                <h2><i class="fas fa-chart-line me-2"></i>Statistici și Alerte</h2>
             </div>
-
-            <?php if (!empty($goals_stats['inactive'])): ?>
-            <div class="alerts-section">
-                <h5><i class="fas fa-bell me-2"></i>Alerte și Sugestii</h5>
-                <?php foreach ($goals_stats['inactive'] as $inactive_goal): ?>
-                    <div class="alert-item">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div class="alert-text">
-                            Nu ai contribuit la obiectivul 
-                            "<a href="#goal-<?php echo $inactive_goal['id']; ?>" class="alert-link">
-                                <?php echo htmlspecialchars($inactive_goal['name']); ?>
-                            </a>" 
-                            <?php 
-                            if (is_numeric($inactive_goal['days'])) {
-                                echo 'de ' . $inactive_goal['days'] . ' zile';
-                            } else {
-                                echo 'încă. Începe să contribui!';
-                            }
-                            ?>
+            <div class="widget-body">
+                <!-- Statistici -->
+                <div class="statistics-grid mb-4">
+                    <div class="statistic-item">
+                        <div class="notification-icon" style="color: #42a5f5;">
+                            <i class="fas fa-tasks"></i>
                         </div>
-                        <button class="btn btn-sm btn-outline-warning" 
-                                onclick="scrollToGoal(<?php echo $inactive_goal['id']; ?>)">
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
+                        <div class="notification-content">
+                            <div class="notification-title">Total Obiective</div>
+                            <div class="notification-text" style="color: #42a5f5;"><?php echo $goals_stats['total']; ?></div>
+                        </div>
                     </div>
-                <?php endforeach; ?>
+                    <div class="statistic-item">
+                        <div class="notification-icon" style="color: #4CAF50;">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">Obiective Completate</div>
+                            <div class="notification-text" style="color: #4CAF50;"><?php echo $goals_stats['completed']; ?></div>
+                        </div>
+                    </div>
+                    <div class="statistic-item">
+                        <div class="notification-icon" style="color: #9C27B0;">
+                            <i class="fas fa-spinner"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">Obiective Active</div>
+                            <div class="notification-text" style="color: #9C27B0;"><?php echo $goals_stats['total'] - $goals_stats['completed']; ?></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Avertismente -->
+                <?php if (!empty($deadline_warnings)): ?>
+                    <div id="deadline-warnings" class="notifications-container">
+                        <h3 class="notifications-title">
+                            <i class="fas fa-bell me-2"></i>
+                            Avertismente și Notificări
+                        </h3>
+                        
+                        <?php foreach ($deadline_warnings as $warning): ?>
+                            <div class="notification-item <?php echo $warning['warning_type']; ?>" data-goal-id="<?php echo $warning['id']; ?>">
+                                <div class="notification-icon">
+                                    <?php if ($warning['warning_type'] === 'no_progress'): ?>
+                                        <i class="fas fa-exclamation-circle"></i>
+                                    <?php elseif ($warning['warning_type'] === 'overdue'): ?>
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    <?php else: ?>
+                                        <i class="fas fa-clock"></i>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="notification-content">
+                                    <div class="notification-header">
+                                        <div class="notification-title">
+                                            <?php if ($warning['warning_type'] === 'no_progress'): ?>
+                                                Nu ai contribuit la obiectivul "<?php echo htmlspecialchars($warning['name']); ?>" încă
+                                            <?php elseif ($warning['warning_type'] === 'overdue'): ?>
+                                                Termen depășit pentru "<?php echo htmlspecialchars($warning['name']); ?>"
+                                            <?php else: ?>
+                                                <?php echo htmlspecialchars($warning['name']); ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="notification-date">
+                                            <?php if ($warning['warning_type'] === 'no_progress'): ?>
+                                                Niciun progres
+                                            <?php elseif ($warning['warning_type'] === 'overdue'): ?>
+                                                Depășit cu <?php echo abs($warning['days_remaining']); ?> zile
+                                            <?php else: ?>
+                                                <?php echo $warning['days_remaining']; ?> zile rămase
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="notification-details">
+                                        <div class="amount-info">
+                                            <?php if ($warning['warning_type'] === 'no_progress'): ?>
+                                                Nu ai făcut nicio contribuție încă
+                                            <?php elseif ($warning['warning_type'] === 'overdue'): ?>
+                                                Mai sunt necesari <?php echo number_format($warning['remaining_amount'], 2); ?> RON
+                                                (termen limită depășit: <?php echo date('d.m.Y', strtotime($warning['deadline'])); ?>)
+                                            <?php else: ?>
+                                                Mai sunt necesari <?php echo number_format($warning['remaining_amount'], 2); ?> RON
+                                                până la <?php echo date('d.m.Y', strtotime($warning['deadline'])); ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="notification-item">
+                        <div class="notification-icon info">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-text">Nu există alerte sau sugestii în acest moment.</div>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
         </div>
 
-        <!-- Success & Error Messages -->
-        <?php if (isset($_SESSION['success_message']) || isset($_SESSION['error_message'])): ?>
-        <div class="alert alert-<?php echo isset($_SESSION['success_message']) ? 'success' : 'danger'; ?> alert-dismissible fade show" role="alert">
-            <?php
-            if (isset($_SESSION['success_message'])) {
-                echo $_SESSION['success_message'];
-            } else {
-                echo isset($_SESSION['error_message']) ? 'A apărut o eroare: ' . htmlspecialchars($_SESSION['error_message']) : 'A apărut o eroare!';
-            }
-            ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        <?php endif; ?>
 
         <!-- Add New Goal Card -->
-        <div class="card add-goal-card mb-4" data-bs-toggle="modal" data-bs-target="#addGoalModal">
+        <div class="card add-goal-card" data-bs-toggle="modal" data-bs-target="#addGoalModal">
             <div class="add-goal-icon">
-                <i class="fa fa-plus"></i>
+                <i class="fas fa-plus"></i>
             </div>
             <div class="goal-content">
                 <h5 class="mb-0">Adaugă Obiectiv Nou</h5>
-                <p class="text-muted mb-0">Click pentru a adăuga un obiectiv financiar nou</p>
+                <p class="text-muted mb-0">Creează un nou obiectiv financiar și urmărește progresul tău către succes</p>
             </div>
         </div>
 
         <!-- Goals List -->
         <?php 
         if ($goals->num_rows > 0):
-            while ($goal = $goals->fetch_assoc()):
+            // Separăm obiectivele în active și finalizate
+            $active_goals = [];
+            $completed_goals = [];
+            
+            while ($goal = $goals->fetch_assoc()) {
+                if ($goal['current_amount'] >= $goal['target_amount']) {
+                    $completed_goals[] = $goal;
+                } else {
+                    $active_goals[] = $goal;
+                }
+            }
+
+            // Afișăm obiectivele active
+            foreach ($active_goals as $goal):
                 $progress = ($goal['current_amount'] / $goal['target_amount']) * 100;
                 $progress = min(100, max(0, $progress));
                 
@@ -880,25 +2143,13 @@ while ($row = $categories_result->fetch_assoc()) {
                 $days_remaining = $today->diff($deadline)->days;
                 $is_overdue = $today > $deadline;
 
-                // Simplified icon selection
-                $icon = 'fa-piggy-bank';
-                if (!empty($goal['category_name'])) {
-                    $category_lower = mb_strtolower($goal['category_name'], 'UTF-8');
-                    $icons = [
-                        'locuință' => 'fa-home',
-                        'transport' => 'fa-car',
-                        'educație' => 'fa-graduation-cap',
-                        'vacanță' => 'fa-plane',
-                        'tehnologie' => 'fa-laptop',
-                        'investiții' => 'fa-chart-line'
-                    ];
-                    $icon = isset($icons[$category_lower]) ? $icons[$category_lower] : 'fa-piggy-bank';
-                }
+                // Obținem informațiile despre iconița și culoare
+                $category_info = getCategoryInfo($goal['category_name'] ?? '', $category_icons);
         ?>
-        <div class="card mb-4">
+        <div class="card mb-4" id="goal-card-<?php echo $goal['id']; ?>">
             <div class="goal-card">
-                <div class="goal-icon">
-                    <i class="fas <?php echo $icon; ?>"></i>
+                <div class="goal-icon" style="color: <?php echo $category_info['color']; ?>">
+                    <i class="fas <?php echo $category_info['icon']; ?>"></i>
                 </div>
                 <div class="goal-content">
                     <h5 class="card-title mb-2"><?php echo htmlspecialchars($goal['name']); ?></h5>
@@ -1010,35 +2261,32 @@ while ($row = $categories_result->fetch_assoc()) {
                     </div>
                 </div>
                 <div class="goal-actions">
-                    <button class="contribute-btn" data-bs-toggle="modal" data-bs-target="#addContributionModal<?php echo $goal['id']; ?>" title="Adaugă contribuție">
-                        <i class="fas fa-plus-circle fa-lg text-success"></i>
+                    <button class="action-btn contribute-btn" data-bs-toggle="modal" data-bs-target="#addContributionModal<?php echo $goal['id']; ?>" title="Adaugă contribuție">
+                        <i class="fas fa-plus"></i>
                     </button>
-                    <button class="withdraw-btn" data-bs-toggle="modal" data-bs-target="#withdrawContributionModal<?php echo $goal['id']; ?>" title="Retrage contribuție">
-                        <i class="fas fa-minus-circle fa-lg text-warning"></i>
+                    <button class="action-btn withdraw-btn" data-bs-toggle="modal" data-bs-target="#withdrawContributionModal<?php echo $goal['id']; ?>" title="Retrage contribuție">
+                        <i class="fas fa-minus"></i>
                     </button>
-                    <button class="edit-btn" data-bs-toggle="modal" data-bs-target="#editGoal<?php echo $goal['id']; ?>" title="Editează">
-                        <i class="fas fa-edit fa-lg"></i>
+                    <button class="action-btn edit-btn" data-bs-toggle="modal" data-bs-target="#editGoal<?php echo $goal['id']; ?>" title="Editează">
+                        <i class="fas fa-edit"></i>
                     </button>
-                    <button class="delete-btn" onclick="deleteGoal(<?php echo $goal['id']; ?>)" title="Șterge">
-                        <i class="fas fa-trash-alt fa-lg"></i>
+                    <button type="button" class="action-btn delete-btn" onclick="confirmDelete(<?php echo $goal['id']; ?>)" title="Șterge">
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
             </div>
             
             <!-- Istoric Contribuții -->
             <div class="history-section">
-                <button class="btn btn-link history-toggle collapsed w-100 text-start ps-4" 
+                <button class="btn btn-link history-toggle w-100 text-start ps-4" 
                         type="button" 
-                        data-bs-toggle="collapse" 
-                        data-bs-target="#history<?php echo $goal['id']; ?>" 
-                        aria-expanded="false"
-                        aria-controls="history<?php echo $goal['id']; ?>">
+                        data-history-target="#history<?php echo $goal['id']; ?>">
                     <i class="fas fa-history me-2"></i>
                     Istoric Contribuții
                     <i class="fas fa-chevron-down float-end me-3"></i>
                 </button>
                 
-                <div class="collapse" id="history<?php echo $goal['id']; ?>">
+                <div class="collapse-section" id="history<?php echo $goal['id']; ?>">
                     <div class="history-content">
                         <?php
                         // Obținem istoricul contribuțiilor pentru acest obiectiv
@@ -1137,8 +2385,15 @@ while ($row = $categories_result->fetch_assoc()) {
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anulează</button>
-                            <button type="submit" class="btn btn-success">Adaugă</button>
+                            <button type="button" 
+                                    data-bs-dismiss="modal"
+                                    class="btn btn-animate btn-animate-secondary">
+                                <i class="fas fa-times me-2"></i>Anulează
+                            </button>
+                            <button type="submit" 
+                                    class="btn btn-animate btn-animate-primary">
+                                <i class="fas fa-plus me-2"></i>Adaugă
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1179,8 +2434,15 @@ while ($row = $categories_result->fetch_assoc()) {
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anulează</button>
-                            <button type="submit" class="btn btn-warning">Retrage</button>
+                            <button type="button" 
+                                    data-bs-dismiss="modal"
+                                    class="btn btn-animate btn-animate-secondary">
+                                <i class="fas fa-times me-2"></i>Anulează
+                            </button>
+                            <button type="submit" 
+                                    class="btn btn-animate btn-animate-primary">
+                                <i class="fas fa-minus me-2"></i>Retrage
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1224,7 +2486,7 @@ while ($row = $categories_result->fetch_assoc()) {
                             <div class="mb-3">
                                 <label class="form-label d-flex justify-content-between align-items-center">
                                     <span>Milestone-uri</span>
-                                    <button type="button" class="btn btn-outline-primary btn-sm" 
+                                    <button type="button" class="btn btn-animate btn-animate-milestone" 
                                             onclick="addMilestoneEdit(<?php echo $goal['id']; ?>)">
                                         <i class="fas fa-plus me-1"></i>Adaugă Milestone
                                     </button>
@@ -1253,7 +2515,8 @@ while ($row = $categories_result->fetch_assoc()) {
                                                            name="milestone_descriptions[]" 
                                                            value="<?php echo htmlspecialchars($milestone['description']); ?>"
                                                            placeholder="Descriere (opțional)">
-                                                    <button type="button" class="btn btn-outline-danger" 
+                                                    <button type="button" 
+                                                            class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 hover:shadow-md hover:translate-y-[-2px] hover:shadow-red-200/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-200 transition-all duration-300 ease-in-out border border-red-200" 
                                                             onclick="removeMilestoneEdit(this, <?php echo $goal['id']; ?>)">
                                                         <i class="fas fa-times"></i>
                                                     </button>
@@ -1286,19 +2549,170 @@ while ($row = $categories_result->fetch_assoc()) {
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anulează</button>
-                            <button type="submit" class="btn btn-primary">Salvează</button>
+                            <button type="button" 
+                                    data-bs-dismiss="modal"
+                                    class="btn btn-animate btn-animate-secondary">
+                                <i class="fas fa-times me-2"></i>Anulează
+                            </button>
+                            <button type="submit" 
+                                    class="btn btn-animate btn-animate-primary">
+                                <i class="fas fa-save me-2"></i>Salvează
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+    </div>
+</div>
         <?php 
-            endwhile;
+            endforeach;
             
-            // Pagination
-            if ($total_pages > 1):
+            // Secțiunea pentru obiective finalizate
+            if (!empty($completed_goals)):
         ?>
+        <div class="card mt-4">
+            <div class="card-header completed-goals-header" id="completedGoalsHeader">
+                <h5 class="mb-0">
+                    <button class="btn btn-link text-white w-100 text-start text-decoration-none p-0" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#completedGoals" 
+                            aria-expanded="false" 
+                            aria-controls="completedGoals">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-trophy me-2"></i>
+                                Obiective Finalizate (<?php echo count($completed_goals); ?>)
+                            </span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </button>
+                </h5>
+            </div>
+
+            <div id="completedGoals" class="collapse" aria-labelledby="completedGoalsHeader">
+                <div class="card-body">
+                    <?php foreach ($completed_goals as $goal):
+                        $category_info = getCategoryInfo($goal['category_name'] ?? '', $category_icons);
+                    ?>
+                        <div class="card mb-3 completed-goal-card" id="goal-card-<?php echo $goal['id']; ?>">
+                            <div class="goal-card">
+                                <div class="goal-icon" style="color: <?php echo $category_info['color']; ?>">
+                                    <i class="fas <?php echo $category_info['icon']; ?>"></i>
+                                </div>
+                                <div class="goal-content">
+                                    <h5 class="card-title mb-2"><?php echo htmlspecialchars($goal['name']); ?></h5>
+                                    <div class="amount">
+                                        <?php echo number_format($goal['current_amount'], 2, ',', '.'); ?> RON
+                                        din 
+                                        <?php echo number_format($goal['target_amount'], 2, ',', '.'); ?> RON
+                                    </div>
+                                    <div class="deadline">
+                                        <i class="fa fa-calendar"></i>
+                                        Finalizat la: <?php echo date('d.m.Y', strtotime($goal['deadline'])); ?>
+                                    </div>
+                                    <?php if ($goal['category_name']): ?>
+                                    <div class="category">
+                                        <i class="fa fa-tag"></i>
+                                        <?php echo htmlspecialchars($goal['category_name']); ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                             style="width: 100%" 
+                                             aria-valuenow="100" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                            100%
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="goal-actions">
+                                    <button type="button" class="action-btn delete-btn" onclick="confirmDelete(<?php echo $goal['id']; ?>)" title="Șterge">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Istoric Contribuții -->
+                            <div class="history-section">
+                                <button class="btn btn-link history-toggle w-100 text-start ps-4" 
+                                        type="button" 
+                                        data-history-target="#history<?php echo $goal['id']; ?>">
+                                    <i class="fas fa-history me-2"></i>
+                                    Istoric Contribuții
+                                    <i class="fas fa-chevron-down float-end me-3"></i>
+                                </button>
+                                
+                                <div class="collapse-section" id="history<?php echo $goal['id']; ?>">
+                                    <div class="history-content">
+                                        <?php
+                                        // Obținem istoricul contribuțiilor pentru acest obiectiv
+                                        $history_sql = "SELECT amount, type, created_at 
+                                                      FROM goal_contributions 
+                                                      WHERE goal_id = ? 
+                                                      ORDER BY created_at DESC 
+                                                      LIMIT 10";
+                                        $history_stmt = $conn->prepare($history_sql);
+                                        $history_stmt->bind_param("i", $goal['id']);
+                                        $history_stmt->execute();
+                                        $history_result = $history_stmt->get_result();
+                                        
+                                        if ($history_result->num_rows > 0):
+                                        ?>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Data</th>
+                                                        <th>Tip</th>
+                                                        <th class="text-end">Sumă</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php while ($entry = $history_result->fetch_assoc()): ?>
+                                                    <tr>
+                                                        <td><?php echo date('d.m.Y H:i', strtotime($entry['created_at'])); ?></td>
+                                                        <td>
+                                                            <?php if ($entry['type'] === 'add'): ?>
+                                                            <span class="badge bg-success">
+                                                                <i class="fas fa-plus-circle me-1"></i>
+                                                                Contribuție
+                                                            </span>
+                                                            <?php else: ?>
+                                                            <span class="badge bg-warning">
+                                                                <i class="fas fa-minus-circle me-1"></i>
+                                                                Retragere
+                                                            </span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <span class="<?php echo $entry['type'] === 'add' ? 'text-success' : 'text-warning'; ?>">
+                                                                <?php echo $entry['type'] === 'add' ? '+' : '-'; ?>
+                                                                <?php echo number_format($entry['amount'], 2, ',', '.'); ?> RON
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    <?php endwhile; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <?php else: ?>
+                                        <p class="text-muted text-center py-3">Nu există încă nicio contribuție înregistrată.</p>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
         <nav aria-label="Navigare pagini">
             <ul class="pagination">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
@@ -1308,104 +2722,58 @@ while ($row = $categories_result->fetch_assoc()) {
                 <?php endfor; ?>
             </ul>
         </nav>
-        <?php 
-            endif;
-        else:
-        ?>
-        <div class="alert alert-info">Nu ai niciun obiectiv financiar setat.</div>
-        <?php endif; ?>
-
-        <!-- Deadline Warnings -->
-        <?php if (!empty($deadline_warnings)): ?>
-            <div id="deadline-warnings" class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title text-warning">
-                                <i class="fas fa-exclamation-triangle"></i> 
-                                Avertismente pentru obiective apropiate de deadline
-                            </h5>
-                            
-                            <?php foreach ($deadline_warnings as $warning): ?>
-                                <div class="warning-alert" data-goal-id="<?php echo $warning['id']; ?>">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-1"><?php echo htmlspecialchars($warning['name']); ?></h6>
-                                        <span class="deadline-info">
-                                            <?php echo $warning['days_remaining']; ?> zile rămase
-                                        </span>
-                                    </div>
-                                    <p class="mb-1">
-                                        Mai sunt necesari <?php echo number_format($warning['remaining_amount'], 2); ?> RON
-                                        până la <?php echo date('d.m.Y', strtotime($warning['deadline'])); ?>
-                                    </p>
-                                    <div class="progress">
-                                        <div class="progress-bar bg-warning" 
-                                             role="progressbar" 
-                                             style="width: <?php echo $warning['progress_percent']; ?>%"
-                                             aria-valuenow="<?php echo $warning['progress_percent']; ?>" 
-                                             aria-valuemin="0" 
-                                             aria-valuemax="100">
-                                            <?php echo round($warning['progress_percent']); ?>%
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-    </div>
-</div>
+    <?php endif; ?>
+<?php else: ?>
+    <div class="alert alert-info" style="width: 100%; max-width: 1100px; margin: 2rem auto;">Nu ai niciun obiectiv financiar setat.</div>
+<?php endif; ?>
 
 <!-- Add Goal Modal -->
-<div class="modal fade" id="addGoalModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+<div class="modal fade" id="addGoalModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Adaugă Obiectiv Nou</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Adaugă Obiectiv Nou
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="goals.php" id="addGoalForm">
                 <div class="modal-body">
                     <input type="hidden" name="action" value="add_goal">
                     
                     <div class="mb-3">
-                        <label for="name" class="form-label">Nume Obiectiv</label>
+                        <label class="form-label">Nume Obiectiv</label>
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="target_amount" class="form-label">Sumă Țintă Finală (RON)</label>
+                        <label class="form-label">Sumă Țintă Finală (RON)</label>
                         <input type="number" class="form-control" id="target_amount" name="target_amount" 
                                step="0.01" min="0" required>
                     </div>
                     
-                    <div class="mb-3">
-                        <label class="form-label">Milestone-uri (Etape Intermediare)</label>
-                        <div id="milestones-container">
-                            <div class="milestone-entry d-flex gap-2 mb-2">
-                                <input type="number" class="form-control" name="milestone_amounts[]" 
-                                       placeholder="Sumă (RON)" step="0.01" min="0">
-                                <input type="text" class="form-control" name="milestone_descriptions[]" 
-                                       placeholder="Descriere (opțional)">
-                                <button type="button" class="btn btn-outline-danger" onclick="removeMilestone(this)">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                    <div class="mb-4">
+                        <label class="form-label d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-flag me-2"></i>Milestone-uri (Etape Intermediare)</span>
+                            <button type="button" 
+                                    class="btn btn-animate btn-animate-milestone" 
+                                    onclick="addMilestone()">
+                                <i class="fas fa-plus me-2"></i>Adaugă Milestone
+                            </button>
+                        </label>
+                        <div id="milestones-container" class="milestone-entries rounded-3 border p-3">
+                            <!-- Milestone entries will be added here -->
                         </div>
-                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addMilestone()">
-                            <i class="fas fa-plus me-1"></i>Adaugă Milestone
-                        </button>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="deadline" class="form-label">Termen Limită</label>
+                        <label class="form-label">Termen Limită</label>
                         <input type="date" class="form-control" id="deadline" name="deadline" required>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="category_id" class="form-label">Categorie</label>
+                        <label class="form-label">Categorie</label>
                         <select class="form-select" id="category_id" name="category_id">
                             <option value="">Fără categorie</option>
                             <?php foreach ($categories as $cat_id => $cat_name): ?>
@@ -1417,43 +2785,222 @@ while ($row = $categories_result->fetch_assoc()) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anulează</button>
-                    <button type="submit" class="btn btn-primary">Salvează</button>
+                    <button type="button" 
+                            data-bs-dismiss="modal"
+                            class="btn btn-animate btn-animate-secondary">
+                        <i class="fas fa-times me-2"></i>Anulează
+                    </button>
+                    <button type="submit" 
+                            class="btn btn-animate btn-animate-primary">
+                        <i class="fas fa-save me-2"></i>Salvează
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+</div>
+
+<!-- Footer -->
+<?php include 'footer/footer.html'; ?>
+
+<!-- Delete Goal Modal -->
+<div class="modal fade" id="deleteGoalModal" tabindex="-1" aria-labelledby="deleteGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirmare Ștergere</h5>
+                <h5 class="modal-title" id="deleteGoalModalLabel">Confirmare ștergere</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 Ești sigur că vrei să ștergi acest obiectiv?
             </div>
             <div class="modal-footer">
-                <form method="POST" action="delete_goal.php" id="deleteGoalForm">
-                    <input type="hidden" name="goal_id" id="deleteGoalId">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anulează</button>
-                    <button type="submit" class="btn btn-danger">Șterge</button>
+                <form action="delete_goal.php" method="POST">
+                    <input type="hidden" name="goal_id" id="goalIdToDelete">
+                    <button type="button" 
+                            data-bs-dismiss="modal"
+                            class="btn btn-animate btn-animate-secondary">
+                        <i class="fas fa-times me-2"></i>Anulează
+                    </button>
+                    <button type="submit" 
+                            class="btn btn-animate btn-animate-primary">
+                        <i class="fas fa-trash me-2"></i>Șterge
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Footer -->
-<?php include 'footer/footer.html'; ?>
-
 <!-- Bootstrap Bundle with Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-<script src="js/goals.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click animation to buttons
+    document.querySelectorAll('.btn-animate').forEach(button => {
+        button.addEventListener('click', function(e) {
+            const rect = button.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const circle = document.createElement('div');
+            circle.style.position = 'absolute';
+            circle.style.left = x + 'px';
+            circle.style.top = y + 'px';
+            circle.style.width = '1px';
+            circle.style.height = '1px';
+            circle.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+            circle.style.borderRadius = '50%';
+            circle.style.transition = 'all 0.3s ease-out';
+            
+            button.appendChild(circle);
+            
+            requestAnimationFrame(() => {
+                circle.style.transform = 'scale(100)';
+                circle.style.opacity = '0';
+                
+                setTimeout(() => {
+                    circle.remove();
+                }, 300);
+            });
+        });
+    });
+
+    // Add click animation to action buttons
+    document.querySelectorAll('.action-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            const rect = button.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const ripple = document.createElement('div');
+            ripple.style.position = 'absolute';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.style.width = '0';
+            ripple.style.height = '0';
+            ripple.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
+            ripple.style.borderRadius = '50%';
+            ripple.style.transform = 'translate(-50%, -50%)';
+            ripple.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+            ripple.style.pointerEvents = 'none';
+            ripple.style.zIndex = '1';
+            
+            button.appendChild(ripple);
+            
+            requestAnimationFrame(() => {
+                ripple.style.width = '100px';
+                ripple.style.height = '100px';
+                ripple.style.opacity = '0';
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 400);
+            });
+        });
+    });
+
+    // Pentru secțiunea Obiective Realizate
+    var completedGoalsHeader = document.querySelector('.completed-goals-header');
+    var completedGoalsSection = document.getElementById('completedGoals');
+    
+    if (completedGoalsHeader && completedGoalsSection) {
+        completedGoalsHeader.addEventListener('click', function(e) {
+            e.preventDefault();
+            var icon = this.querySelector('.fa-chevron-down');
+            if (completedGoalsSection.classList.contains('show')) {
+                completedGoalsSection.classList.remove('show');
+                icon.classList.remove('rotate-icon');
+            } else {
+                completedGoalsSection.classList.add('show');
+                icon.classList.add('rotate-icon');
+            }
+        });
+    }
+
+    // Pentru toate secțiunile de Istoric Contribuții
+    document.querySelectorAll('.history-toggle').forEach(function(toggle) {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            var targetId = this.getAttribute('data-history-target');
+            var target = document.querySelector(targetId);
+            var icon = this.querySelector('.fa-chevron-down');
+            
+            if (target.classList.contains('show')) {
+                target.classList.remove('show');
+                icon.classList.remove('rotate-icon');
+                this.classList.add('collapsed');
+            } else {
+                target.classList.add('show');
+                icon.classList.add('rotate-icon');
+                this.classList.remove('collapsed');
+            }
+        });
+    });
+});
+
+// Restul funcțiilor existente rămân neschimbate
+function confirmDelete(goalId) {
+    document.getElementById('goalIdToDelete').value = goalId;
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteGoalModal'));
+    deleteModal.show();
+}
+
+// Funcție pentru adăugarea unui nou milestone în formularul de adăugare
+function addMilestone() {
+    const container = document.getElementById('milestones-container');
+    const newEntry = document.createElement('div');
+    newEntry.className = 'milestone-entry d-flex gap-2 mb-2';
+    newEntry.innerHTML = `
+        <input type="number" class="form-control" name="milestone_amounts[]" 
+               placeholder="Sumă (RON)" step="0.01" min="0">
+        <input type="text" class="form-control" name="milestone_descriptions[]" 
+               placeholder="Descriere (opțional)">
+        <button type="button" 
+                class="w-full sm:w-auto px-6 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:shadow-md hover:translate-y-[-2px] hover:border-[#42a5f5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-300 ease-in-out" 
+                onclick="removeMilestone(this)">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(newEntry);
+}
+
+// Funcție pentru ștergerea unui milestone din formularul de adăugare
+function removeMilestone(button) {
+    button.closest('.milestone-entry').remove();
+}
+
+// Funcție pentru adăugarea unui nou milestone în formularul de editare
+function addMilestoneEdit(goalId) {
+    const container = document.getElementById(`milestones-container-${goalId}`);
+    const newEntry = document.createElement('div');
+    newEntry.className = 'milestone-entry d-flex gap-2 mb-2 align-items-center';
+    newEntry.innerHTML = `
+        <div class="input-group">
+            <input type="number" class="form-control" name="milestone_amounts[]" 
+                   placeholder="Sumă (RON)" step="0.01" min="0">
+            <input type="text" class="form-control" name="milestone_descriptions[]" 
+                   placeholder="Descriere (opțional)">
+            <button type="button" 
+                    class="w-full sm:w-auto px-6 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:shadow-md hover:translate-y-[-2px] hover:border-[#42a5f5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-300 ease-in-out" 
+                    onclick="removeMilestoneEdit(this, ${goalId})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(newEntry);
+}
+
+// Funcție pentru ștergerea unui milestone din formularul de editare
+function removeMilestoneEdit(button, goalId) {
+    button.closest('.milestone-entry').remove();
+}
+
+// ... rest of the existing code ...
+</script>
 <?php
 // Verificăm dacă avem milestone-uri atinse de afișat
 if (isset($_GET['success']) && strpos($_GET['success'], 'Milestone') !== false) {

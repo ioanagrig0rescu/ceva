@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 include 'sesion-check/check.php';
 include 'plugins/bootstrap.html';
 include 'calendar/Calendar.php';
-include 'navbar/sidebar_old.php';
+
 $selected_month = isset($_GET['month']) ? $_GET['month'] : date('m');
 $selected_year = isset($_GET['year']) ? $_GET['year'] : date('Y');
 

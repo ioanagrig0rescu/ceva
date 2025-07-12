@@ -39,6 +39,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function showExpenseModal(date) {
+    // Check if the date is in the future
+    if (new Date(date) > new Date(new Date().setHours(23, 59, 59, 999))) {
+        alert('Nu puteți adăuga cheltuieli pentru date viitoare!');
+        return;
+    }
+
     console.log('Showing expense modal for date:', date);
     currentDate = date;
     document.getElementById('selectedDate').textContent = formatDate(date);
@@ -67,7 +73,6 @@ function showExpenseModal(date) {
                         <th>Categorie</th>
                         <th>Sumă</th>
                         <th>Descriere</th>
-                        <th>Acțiuni</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -76,18 +81,12 @@ function showExpenseModal(date) {
             expenses.forEach(expense => {
                 const row = table.querySelector('tbody').insertRow();
                 const description = expense.description.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                row.className = 'cursor-pointer hover:bg-gray-50';
+                row.onclick = () => editExpense(expense.id, expense.category_name, expense.amount, description, expense.date, expense.category_id);
                 row.innerHTML = `
                     <td>${expense.category_name}</td>
                     <td>${expense.amount} RON</td>
                     <td>${expense.description}</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-primary me-1" onclick="editExpense(${expense.id}, '${expense.category_name}', ${expense.amount}, '${description}', '${expense.date}', ${expense.category_id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteExpense(${expense.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
                 `;
             });
             
@@ -222,7 +221,7 @@ function saveExpense() {
     
     console.log('Saving expense with data:', Object.fromEntries(formData));
 
-    fetch('save-expense.php', {
+    fetch('../save-expense.php', {
         method: 'POST',
         body: formData
     })
@@ -234,7 +233,7 @@ function saveExpense() {
             const expenseDate = formData.get('date');
             const calendarCell = document.querySelector(`.calendar-day[data-date="${expenseDate}"]`);
             if (calendarCell) {
-                fetch(`fetch_expenses.php?date=${expenseDate}`)
+                fetch(`../fetch_expenses.php?date=${expenseDate}`)
                     .then(response => response.json())
                     .then(expenses => {
                         // Remove existing expense divs

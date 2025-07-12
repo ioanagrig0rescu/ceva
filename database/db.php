@@ -23,6 +23,10 @@ define('DB_NAME', 'budgetmaster');
 // Create connection
 $conn = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME);
 
+// Create login_logs table if it doesn't exist
+$sql = file_get_contents(__DIR__ . '/create_login_logs.sql');
+mysqli_multi_query($conn, $sql);
+
 // Check connection
 if ($conn->connect_error) {
     error_log("Database connection error: " . $conn->connect_error);

@@ -30,6 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         $goal = $result->fetch_assoc();
+        
+        // Verificăm dacă obiectivul este deja îndeplinit
+        if ($goal['current_amount'] >= $goal['target_amount']) {
+            throw new Exception("Nu poți adăuga contribuții la un obiectiv deja îndeplinit!");
+        }
+        
         $remaining = $goal['target_amount'] - $goal['current_amount'];
         
         // Verificăm dacă suma nu depășește ce mai e necesar

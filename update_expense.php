@@ -1,74 +1,77 @@
 <?php
 session_start();
-require_once 'database/db.php';
-require_once 'sesion-check/check.php';
+include 'database/db.php';
 
 header('Content-Type: application/json');
 
+if (!isset($_SESSION['id'])) {
+    echo json_encode(['success' => false, 'message' => 'Nu sunteți autentificat']);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Metodă invalidă']);
+    exit;
+}
+
+// Verifică dacă toate câmpurile necesare sunt prezente
+if (!isset($_POST['id']) || !isset($_POST['category_id']) || !isset($_POST['amount']) || !isset($_POST['description']) || !isset($_POST['date'])) {
+    echo json_encode(['success' => false, 'message' => 'Toate câmpurile sunt obligatorii']);
+    exit;
+}
+
+$user_id = $_SESSION['id'];
+$expense_id = $_POST['id'];
+$category_id = $_POST['category_id'];
+$amount = floatval($_POST['amount']);
+$description = trim($_POST['description']);
+$date = $_POST['date'];
+
+// Validare date
+if ($amount <= 0) {
+    echo json_encode(['success' => false, 'message' => 'Suma trebuie să fie mai mare decât 0']);
+    exit;
+}
+
+if (strlen($description) < 1 || strlen($description) > 255) {
+    echo json_encode(['success' => false, 'message' => 'Descrierea trebuie să aibă între 1 și 255 caractere']);
+    exit;
+}
+
 try {
-    // Verificăm dacă avem toate datele necesare
-    if (!isset($_POST['id'], $_POST['category_id'], $_POST['amount'], $_POST['description'], $_POST['date'])) {
-        throw new Exception('Toate câmpurile sunt obligatorii');
-    }
-
-    // Sanitizăm și validăm datele
-    $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
-    $category_id = filter_var($_POST['category_id'], FILTER_SANITIZE_NUMBER_INT);
-    $amount = filter_var($_POST['amount'], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-    $description = filter_var($_POST['description'], FILTER_SANITIZE_STRING);
-    $date = filter_var($_POST['date'], FILTER_SANITIZE_STRING);
-
-    // Validări suplimentare
-    if (!$id || !$category_id || !$amount || !$description || !$date) {
-        throw new Exception('Date invalide');
-    }
-
-    if ($amount <= 0) {
-        throw new Exception('Suma trebuie să fie mai mare decât 0');
-    }
-
-    if (!strtotime($date)) {
-        throw new Exception('Data invalidă');
-    }
-
-    // Verificăm dacă cheltuiala aparține utilizatorului curent
-    $check_stmt = $conn->prepare("SELECT user_id FROM expenses WHERE id = ?");
-    $check_stmt->bind_param("i", $id);
-    $check_stmt->execute();
-    $result = $check_stmt->get_result();
+    // Verifică dacă cheltuiala există și aparține utilizatorului
+    $stmt = $conn->prepare("SELECT id FROM expenses WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $expense_id, $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
     
     if ($result->num_rows === 0) {
-        throw new Exception('Cheltuiala nu a fost găsită');
+        echo json_encode(['success' => false, 'message' => 'Cheltuiala nu a fost găsită sau nu vă aparține']);
+        exit;
     }
 
-    $expense = $result->fetch_assoc();
-    if ($expense['user_id'] != $_SESSION['id']) {
-        throw new Exception('Nu aveți permisiunea să modificați această cheltuială');
+    // Verifică dacă categoria există și aparține utilizatorului sau este predefinită
+    $stmt = $conn->prepare("SELECT id FROM categories WHERE id = ? AND (user_id IS NULL OR user_id = ?)");
+    $stmt->bind_param("ii", $category_id, $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        echo json_encode(['success' => false, 'message' => 'Categorie invalidă']);
+        exit;
     }
 
-    // Actualizăm cheltuiala
-    $update_stmt = $conn->prepare("
-        UPDATE expenses 
-        SET category_id = ?, amount = ?, description = ?, date = ? 
-        WHERE id = ? AND user_id = ?
-    ");
-    $update_stmt->bind_param("idssii", $category_id, $amount, $description, $date, $id, $_SESSION['id']);
-
-    if (!$update_stmt->execute()) {
-        throw new Exception('Eroare la actualizarea cheltuielii');
+    // Actualizează cheltuiala
+    $stmt = $conn->prepare("UPDATE expenses SET category_id = ?, amount = ?, description = ?, date = ? WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("idssii", $category_id, $amount, $description, $date, $expense_id, $user_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Cheltuiala a fost actualizată cu succes']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Eroare la actualizarea cheltuielii']);
     }
-
-    // Returnăm răspuns de succes
-    echo json_encode([
-        'success' => true,
-        'message' => 'Cheltuiala a fost actualizată cu succes'
-    ]);
-
 } catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage()
-    ]);
+    error_log($e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'A apărut o eroare la actualizarea cheltuielii']);
 }
 ?> 

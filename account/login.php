@@ -52,7 +52,11 @@ if (isset($_POST['submit'])) {
                 $_SESSION['loggedin'] = true;
                 $_SESSION['id'] = $user['id'];
 
-                    // Cookie-uri cu setări de securitate
+                // Track login
+                include '../operations/track_login.php';
+                trackLogin($user['username'], $conn);
+
+                // Cookie-uri cu setări de securitate
                 $cookie_options = [
                         'expires' => time() + 86400,
                     'path' => '/',
